@@ -30,8 +30,32 @@ function getSegment(data) {
 app.post('/api/register', async (req, res) => {
   try {
     const data = req.body;
-    const referralCode = generateReferralCode();
-    const segment = getSegment(data);
+    // Check duplicate phone
+const checkDuplicate = await fetch(
+  `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${data.whatsapp}&select=id`,
+  { headers }
+);
+// Check duplicate phone
+const checkDuplicate = await fetch(
+  `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${data.whatsapp}&select=id`,
+  { headers }
+);
+const existing = await checkDuplicate.json();
+if (existing.length > 0) {
+  return res.status(400).json({ 
+    success: false, 
+    error: 'duplicate',
+    message: 'This WhatsApp number is already registered!'
+  });
+}
+const existing = await checkDuplicate.json();
+if (existing.length > 0) {
+  return res.status(400).json({ 
+    success: false, 
+    error: 'duplicate',
+    message: 'This WhatsApp number is already registered!'
+  });
+}
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/riders`, {
       method: 'POST',
