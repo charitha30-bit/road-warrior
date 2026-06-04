@@ -83,16 +83,20 @@ export default function RegistrationForm() {
   }
 
   const handleSubmit = async () => {
-    setLoading(true)
-    try {
-      const res = await axios.post(`${API}/api/register`, form)
-      setResult(res.data)
-      setSubmitted(true)
-    } catch (e) {
+  setLoading(true)
+  try {
+    const res = await axios.post(`${API}/api/register`, form)
+    setResult(res.data)
+    setSubmitted(true)
+  } catch (e) {
+    if (e.response?.data?.error === 'duplicate') {
+      alert('This WhatsApp number is already registered! Visit /score to check your points.')
+    } else {
       alert('Something went wrong. Please try again.')
     }
-    setLoading(false)
   }
+  setLoading(false)
+}
 
   const copyCode = () => {
     navigator.clipboard.writeText(result?.referralCode)
