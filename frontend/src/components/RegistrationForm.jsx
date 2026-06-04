@@ -43,7 +43,9 @@ const translations = {
 }
 
 export default function RegistrationForm() {
-  const [lang, setLang] = useState('en')
+  const urlParams = new URLSearchParams(window.location.search)
+const refFromURL = urlParams.get('ref') || ''
+const [lang, setLang] = useState('en')
   const [step, setStep] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState(null)
@@ -57,7 +59,7 @@ export default function RegistrationForm() {
     fuel_type: 'Petrol', weekly_fuel: '', monthly_maintenance: '',
     challenges: [], open_to_ev: 'Yes', accident_insurance: 'Yes',
     health_insurance: 'Yes', paid_out_of_pocket: 'No',
-    interested_in: 'EV loan information', referred_by: ''
+    interested_in: 'EV loan information', referred_by: refFromURL
   })
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
