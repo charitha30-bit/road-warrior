@@ -25,7 +25,31 @@ function getSegment(data) {
   if (data.vehicle_type === 'Electric two-wheeler') return 'EV Rider';
   return 'Petrol Rider';
 }
+async function sendWhatsApp(phone, name, referralCode) {
+  const token = 'EAAOY6dYoVvgBRqktC4wKUBGBiPz8A7nZCob7eEZCMylnuXwtWeJZCm95gNNxnA2C5VrpN6rpGg9DUYW3RVJ5wRZAKCdb5MU0vkBn34ktgv7ArFo8EXtEDkxiEGf2EsAsGqtB8nrmODlpz4ZCsIVkRosqyySOHpBmVKroUZCfluSw91bFenMVolQR2rNx5PBDXzzVYsSeY8cc603ZBjtOlTn3jxyi4U9B2Hx0RbBmPUcNvPZBIEbCtwyTeFZBRQ0kyznbulMU11EyVIEpuNkcvQfK9WgZDZD'
+  const phoneNumberId = '1121568487708918'
 
+  const message = `Welcome ${name}! You are now registered as a Road Warrior! Your referral code is ${referralCode}. Share it with other riders to earn points and rewards. Road Warrior — let's go!`
+
+  try {
+    await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'text',
+        text: { body: message }
+      })
+    })
+    console.log('WhatsApp sent to', phone)
+  } catch (e) {
+    console.log('WhatsApp failed:', e.message)
+  }
+}
 // Register rider
 app.post('/api/register', async (req, res) => {
   try {
@@ -98,7 +122,7 @@ app.post('/api/register', async (req, res) => {
         );
       }
     }
-
+    await sendWhatsApp(data.whatsapp, data.name, referralCode);
     res.json({ success: true, referralCode, points: 10, segment });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
