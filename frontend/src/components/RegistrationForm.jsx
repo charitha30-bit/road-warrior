@@ -153,6 +153,15 @@ export default function RegistrationForm() {
           </div>
         </div>
         <p style={{ color: '#64748b', fontSize: '13px' }}>Share your code with other riders to earn more points!</p>
+        <div style={{ marginTop: '16px', background: '#0f172a', borderRadius: '8px', padding: '12px' }}>
+  <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '8px' }}>Your QR Code</p>
+  <img 
+    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://road-warrior-frontend.vercel.app?ref=${result?.referralCode}`}
+    alt="QR Code"
+    style={{ width: '150px', height: '150px', borderRadius: '8px' }}
+  />
+  <p style={{ color: '#64748b', fontSize: '11px', marginTop: '8px' }}>Share this QR at petrol pumps!</p>
+</div>
         <a href="/score" style={{ display: 'block', marginTop: '12px', color: '#6366f1', fontSize: '13px', textDecoration: 'none' }}>Check Your Score →</a>
       </div>
     </div>

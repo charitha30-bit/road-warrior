@@ -25,12 +25,11 @@ function getSegment(data) {
   if (data.vehicle_type === 'Electric two-wheeler') return 'EV Rider';
   return 'Petrol Rider';
 }
+
 async function sendWhatsApp(phone, name, referralCode) {
   const token = 'EAAOY6dYoVvgBRqktC4wKUBGBiPz8A7nZCob7eEZCMylnuXwtWeJZCm95gNNxnA2C5VrpN6rpGg9DUYW3RVJ5wRZAKCdb5MU0vkBn34ktgv7ArFo8EXtEDkxiEGf2EsAsGqtB8nrmODlpz4ZCsIVkRosqyySOHpBmVKroUZCfluSw91bFenMVolQR2rNx5PBDXzzVYsSeY8cc603ZBjtOlTn3jxyi4U9B2Hx0RbBmPUcNvPZBIEbCtwyTeFZBRQ0kyznbulMU11EyVIEpuNkcvQfK9WgZDZD'
   const phoneNumberId = '1121568487708918'
-
   const message = `Welcome ${name}! You are now registered as a Road Warrior! Your referral code is ${referralCode}. Share it with other riders to earn points and rewards. Road Warrior — let's go!`
-
   try {
     await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
       method: 'POST',
@@ -50,6 +49,7 @@ async function sendWhatsApp(phone, name, referralCode) {
     console.log('WhatsApp failed:', e.message)
   }
 }
+
 // Register rider
 app.post('/api/register', async (req, res) => {
   try {
@@ -103,25 +103,53 @@ app.post('/api/register', async (req, res) => {
       throw new Error(JSON.stringify(err));
     }
 
-    // Add points to referrer
+    // Add points to referrer + milestone bonuses
     if (data.referred_by) {
       const refCheck = await fetch(
-        `${SUPABASE_URL}/rest/v1/riders?referral_code=eq.${data.referred_by}&select=id,points`,
+        `${SUPABASE_URL}/rest/v1/riders?referral_code=eq.${data.referred_by}&select=id,points,name,whatsapp`,
         { headers }
       );
       const referrers = await refCheck.json();
       if (referrers.length > 0) {
         const referrer = referrers[0];
+        const newPoints = referrer.points + 5;
+
         await fetch(
           `${SUPABASE_URL}/rest/v1/riders?id=eq.${referrer.id}`,
           {
             method: 'PATCH',
             headers,
-            body: JSON.stringify({ points: referrer.points + 5 })
+            body: JSON.stringify({ points: newPoints })
           }
         );
+
+        // Count total referrals
+        const countCheck = await fetch(
+          `${SUPABASE_URL}/rest/v1/riders?referred_by=eq.${data.referred_by}&select=id`,
+          { headers }
+        );
+        const referralCount = (await countCheck.json()).length;
+
+        // Milestone bonus
+        let bonusPoints = 0;
+        if (referralCount === 10) bonusPoints = 100;
+        else if (referralCount === 25) bonusPoints = 300;
+        else if (referralCount === 50) bonusPoints = 500;
+
+        if (bonusPoints > 0) {
+          await fetch(
+            `${SUPABASE_URL}/rest/v1/riders?id=eq.${referrer.id}`,
+            {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify({ points: newPoints + bonusPoints })
+            }
+          );
+          console.log(`Milestone bonus ${bonusPoints} points added to ${referrer.name}`);
+        }
       }
     }
+
     await sendWhatsApp(data.whatsapp, data.name, referralCode);
     res.json({ success: true, referralCode, points: 10, segment });
   } catch (err) {
