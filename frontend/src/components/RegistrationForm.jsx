@@ -143,6 +143,12 @@ export default function RegistrationForm() {
           </div>
         </div>
         <p style={{ color: '#64748b', fontSize: '13px' }}>Share your code with other riders to earn more points!</p>
+<a href="/score" style={{ display: 'block', marginTop: '12px', color: '#6366f1', fontSize: '13px', textDecoration: 'none' }}>
+  Check Your Score →
+</a>
+<a href="/admin" style={{ display: 'block', marginTop: '8px', color: '#334155', fontSize: '12px', textDecoration: 'none' }}>
+  Leaderboard →
+</a>
       </div>
     </div>
   )
