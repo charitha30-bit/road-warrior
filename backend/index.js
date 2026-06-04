@@ -30,32 +30,22 @@ function getSegment(data) {
 app.post('/api/register', async (req, res) => {
   try {
     const data = req.body;
+    const referralCode = generateReferralCode();
+    const segment = getSegment(data);
+
     // Check duplicate phone
-const checkDuplicate = await fetch(
-  `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${data.whatsapp}&select=id`,
-  { headers }
-);
-// Check duplicate phone
-const checkDuplicate = await fetch(
-  `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${data.whatsapp}&select=id`,
-  { headers }
-);
-const existing = await checkDuplicate.json();
-if (existing.length > 0) {
-  return res.status(400).json({ 
-    success: false, 
-    error: 'duplicate',
-    message: 'This WhatsApp number is already registered!'
-  });
-}
-const existing = await checkDuplicate.json();
-if (existing.length > 0) {
-  return res.status(400).json({ 
-    success: false, 
-    error: 'duplicate',
-    message: 'This WhatsApp number is already registered!'
-  });
-}
+    const dupCheck = await fetch(
+      `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${data.whatsapp}&select=id`,
+      { headers }
+    );
+    const existing = await dupCheck.json();
+    if (existing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'duplicate',
+        message: 'This WhatsApp number is already registered!'
+      });
+    }
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/riders`, {
       method: 'POST',
@@ -89,6 +79,26 @@ if (existing.length > 0) {
       throw new Error(JSON.stringify(err));
     }
 
+    // Add points to referrer
+    if (data.referred_by) {
+      const refCheck = await fetch(
+        `${SUPABASE_URL}/rest/v1/riders?referral_code=eq.${data.referred_by}&select=id,points`,
+        { headers }
+      );
+      const referrers = await refCheck.json();
+      if (referrers.length > 0) {
+        const referrer = referrers[0];
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/riders?id=eq.${referrer.id}`,
+          {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ points: referrer.points + 5 })
+          }
+        );
+      }
+    }
+
     res.json({ success: true, referralCode, points: 10, segment });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -98,9 +108,10 @@ if (existing.length > 0) {
 // Get all riders
 app.get('/api/riders', async (req, res) => {
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/riders?select=*&order=points.desc`, {
-      headers
-    });
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/riders?select=*&order=points.desc`,
+      { headers }
+    );
     const data = await response.json();
     res.json(data);
   } catch (err) {
@@ -156,5 +167,5 @@ app.get('/api/admin/riders', verifyAdmin, async (req, res) => {
 });
 
 app.listen(process.env.PORT || 5000, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
+  console.log(`Server running on port ${process.env.PORT || 5000}`);
 });
