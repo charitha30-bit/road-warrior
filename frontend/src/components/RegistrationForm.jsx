@@ -13,7 +13,8 @@ const translations = {
     experience: 'Years of Experience', vehicle: 'Vehicle Type', brand: 'Vehicle Brand',
     fuel: 'Fuel Type', weekly: 'Weekly Fuel Cost (₹)', monthly: 'Monthly Maintenance (₹)',
     challenges: 'Daily Challenges', openEV: 'Open to EV?', accident: 'Accident Insurance?',
-    health: 'Health Insurance?', interested: 'Interested In', referral: 'Referral Code (if any)',
+    health: 'Health Insurance?', paidPocket: 'Ever paid out of pocket for accident?',
+    interested: 'Interested In', referral: 'Referral Code (if any)',
   },
   hi: {
     title: 'रोड वॉरियर EV चैलेंज',
@@ -24,7 +25,8 @@ const translations = {
     experience: 'अनुभव (वर्ष)', vehicle: 'वाहन प्रकार', brand: 'वाहन ब्रांड',
     fuel: 'ईंधन प्रकार', weekly: 'साप्ताहिक ईंधन खर्च (₹)', monthly: 'मासिक रखरखाव (₹)',
     challenges: 'दैनिक चुनौतियाँ', openEV: 'EV के लिए तैयार?', accident: 'दुर्घटना बीमा?',
-    health: 'स्वास्थ्य बीमा?', interested: 'रुचि', referral: 'रेफरल कोड (यदि कोई हो)',
+    health: 'स्वास्थ्य बीमा?', paidPocket: 'क्या आपने दुर्घटना के लिए जेब से भुगतान किया?',
+    interested: 'रुचि', referral: 'रेफरल कोड (यदि कोई हो)',
   },
   kn: {
     title: 'ರೋಡ್ ವಾರಿಯರ್ EV ಚಾಲೆಂಜ್',
@@ -35,7 +37,8 @@ const translations = {
     experience: 'ಅನುಭವ (ವರ್ಷ)', vehicle: 'ವಾಹನ ಪ್ರಕಾರ', brand: 'ವಾಹನ ಬ್ರ್ಯಾಂಡ್',
     fuel: 'ಇಂಧನ ವಿಧ', weekly: 'ವಾರದ ಇಂಧನ ವೆಚ್ಚ (₹)', monthly: 'ಮಾಸಿಕ ನಿರ್ವಹಣೆ (₹)',
     challenges: 'ದೈನಂದಿನ ಸವಾಲುಗಳು', openEV: 'EV ಗೆ ತೆರೆದಿದ್ದೀರಾ?', accident: 'ಅಪಘಾತ ವಿಮೆ?',
-    health: 'ಆರೋಗ್ಯ ವಿಮೆ?', interested: 'ಆಸಕ್ತಿ', referral: 'ರೆಫರಲ್ ಕೋಡ್ (ಇದ್ದರೆ)',
+    health: 'ಆರೋಗ್ಯ ವಿಮೆ?', paidPocket: 'ಅಪಘಾತಕ್ಕಾಗಿ ಜೇಬಿನಿಂದ ಪಾವತಿಸಿದ್ದೀರಾ?',
+    interested: 'ಆಸಕ್ತಿ', referral: 'ರೆಫರಲ್ ಕೋಡ್ (ಇದ್ದರೆ)',
   }
 }
 
@@ -53,8 +56,8 @@ export default function RegistrationForm() {
     experience: 'Less than 1 year', vehicle_type: 'Petrol two-wheeler', brand: '',
     fuel_type: 'Petrol', weekly_fuel: '', monthly_maintenance: '',
     challenges: [], open_to_ev: 'Yes', accident_insurance: 'Yes',
-    health_insurance: 'Yes', interested_in: 'EV loan information',
-    referred_by: ''
+    health_insurance: 'Yes', paid_out_of_pocket: 'No',
+    interested_in: 'EV loan information', referred_by: ''
   })
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -83,20 +86,20 @@ export default function RegistrationForm() {
   }
 
   const handleSubmit = async () => {
-  setLoading(true)
-  try {
-    const res = await axios.post(`${API}/api/register`, form)
-    setResult(res.data)
-    setSubmitted(true)
-  } catch (e) {
-    if (e.response?.data?.error === 'duplicate') {
-      alert('This WhatsApp number is already registered! Visit /score to check your points.')
-    } else {
-      alert('Something went wrong. Please try again.')
+    setLoading(true)
+    try {
+      const res = await axios.post(`${API}/api/register`, form)
+      setResult(res.data)
+      setSubmitted(true)
+    } catch (e) {
+      if (e.response?.data?.error === 'duplicate') {
+        alert('This WhatsApp number is already registered! Visit /score to check your points.')
+      } else {
+        alert('Something went wrong. Please try again.')
+      }
     }
+    setLoading(false)
   }
-  setLoading(false)
-}
 
   const copyCode = () => {
     navigator.clipboard.writeText(result?.referralCode)
@@ -109,14 +112,17 @@ export default function RegistrationForm() {
     border: '1px solid #334155', background: '#1e293b',
     color: '#fff', fontSize: '15px', marginTop: '6px'
   }
-  const labelStyle = {
-    fontSize: '14px', color: '#94a3b8',
-    display: 'block', marginTop: '16px'
-  }
+  const labelStyle = { fontSize: '14px', color: '#94a3b8', display: 'block', marginTop: '16px' }
   const btnStyle = (primary) => ({
     padding: '12px 28px', borderRadius: '8px', border: 'none',
     background: primary ? '#6366f1' : '#1e293b',
     color: '#fff', fontSize: '15px', cursor: 'pointer', fontWeight: '600'
+  })
+  const chipStyle = (active, color) => ({
+    padding: '8px 14px', borderRadius: '20px', border: '1px solid',
+    borderColor: active ? color : '#334155',
+    background: active ? color : 'transparent',
+    color: '#fff', cursor: 'pointer', fontSize: '13px'
   })
 
   if (submitted) return (
@@ -147,12 +153,7 @@ export default function RegistrationForm() {
           </div>
         </div>
         <p style={{ color: '#64748b', fontSize: '13px' }}>Share your code with other riders to earn more points!</p>
-<a href="/score" style={{ display: 'block', marginTop: '12px', color: '#6366f1', fontSize: '13px', textDecoration: 'none' }}>
-  Check Your Score →
-</a>
-<a href="/admin" style={{ display: 'block', marginTop: '8px', color: '#334155', fontSize: '12px', textDecoration: 'none' }}>
-  Leaderboard →
-</a>
+        <a href="/score" style={{ display: 'block', marginTop: '12px', color: '#6366f1', fontSize: '13px', textDecoration: 'none' }}>Check Your Score →</a>
       </div>
     </div>
   )
@@ -167,7 +168,7 @@ export default function RegistrationForm() {
       <input style={inputStyle} value={form.city} onChange={e => set('city', e.target.value)} placeholder="Your city" />
       <label style={labelStyle}>{t.platform}</label>
       <select style={inputStyle} value={form.platform} onChange={e => set('platform', e.target.value)}>
-        {['Swiggy','Zomato','Blinkit','Zepto','Dunzo','Ola','Uber','Other'].map(p => <option key={p}>{p}</option>)}
+        {['Swiggy','Zomato','Blinkit','Zepto','Dunzo','Porter','Other'].map(p => <option key={p}>{p}</option>)}
       </select>
       <label style={labelStyle}>{t.experience}</label>
       <select style={inputStyle} value={form.experience} onChange={e => set('experience', e.target.value)}>
@@ -178,13 +179,13 @@ export default function RegistrationForm() {
     <div key={1}>
       <label style={labelStyle}>{t.vehicle}</label>
       <select style={inputStyle} value={form.vehicle_type} onChange={e => set('vehicle_type', e.target.value)}>
-        {['Petrol two-wheeler','Electric two-wheeler','CNG two-wheeler'].map(v => <option key={v}>{v}</option>)}
+        {['Petrol two-wheeler','Electric two-wheeler','Diesel two-wheeler','Other'].map(v => <option key={v}>{v}</option>)}
       </select>
       <label style={labelStyle}>{t.brand}</label>
       <input style={inputStyle} value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="e.g. Honda, Hero, Ola S1" />
       <label style={labelStyle}>{t.fuel}</label>
       <select style={inputStyle} value={form.fuel_type} onChange={e => set('fuel_type', e.target.value)}>
-        {['Petrol','Electric','CNG'].map(f => <option key={f}>{f}</option>)}
+        {['Petrol','Electric','Battery Swapping','Home Charging','Other'].map(f => <option key={f}>{f}</option>)}
       </select>
     </div>,
 
@@ -198,29 +199,50 @@ export default function RegistrationForm() {
     <div key={3}>
       <label style={labelStyle}>{t.challenges}</label>
       <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-        {['High fuel costs','Vehicle breakdown','Long charging time','No charging stations','Traffic','Low battery range','High maintenance'].map(c => (
-          <button key={c} type="button" onClick={() => toggleChallenge(c)}
-            style={{ padding: '8px 14px', borderRadius: '20px', border: '1px solid',
-              borderColor: form.challenges.includes(c) ? '#6366f1' : '#334155',
-              background: form.challenges.includes(c) ? '#6366f1' : 'transparent',
-              color: '#fff', cursor: 'pointer', fontSize: '13px' }}>
-            {c}
-          </button>
+        {['High fuel cost','Frequent breakdown','No nearby charging station','Battery range anxiety','Repair costs','Long refuelling time'].map(c => (
+          <button key={c} type="button" onClick={() => toggleChallenge(c)} style={chipStyle(form.challenges.includes(c), '#6366f1')}>{c}</button>
         ))}
       </div>
+
+      {form.vehicle_type === 'Electric two-wheeler' && (
+        <>
+          <label style={{ ...labelStyle, color: '#10b981' }}>EV Specific Challenges</label>
+          <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            {['Battery drains too fast','Swapping station too far','Long charging time at home','Vehicle not powerful enough','Service centre not nearby'].map(c => (
+              <button key={c} type="button" onClick={() => toggleChallenge(c)} style={chipStyle(form.challenges.includes(c), '#10b981')}>{c}</button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {form.vehicle_type !== 'Electric two-wheeler' && (
+        <>
+          <label style={{ ...labelStyle, color: '#f59e0b' }}>Petrol Specific Challenges</label>
+          <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            {['Fuel price too high','Frequent engine issues','Pollution fine risk','High servicing cost'].map(c => (
+              <button key={c} type="button" onClick={() => toggleChallenge(c)} style={chipStyle(form.challenges.includes(c), '#f59e0b')}>{c}</button>
+            ))}
+          </div>
+        </>
+      )}
+
       <label style={labelStyle}>{t.openEV}</label>
       <select style={inputStyle} value={form.open_to_ev} onChange={e => set('open_to_ev', e.target.value)}>
-        <option>Yes</option><option>No</option><option>Maybe</option>
+        <option>Yes</option><option>No</option><option>Already on EV</option><option>Need more information</option>
       </select>
     </div>,
 
     <div key={4}>
       <label style={labelStyle}>{t.accident}</label>
       <select style={inputStyle} value={form.accident_insurance} onChange={e => set('accident_insurance', e.target.value)}>
-        <option>Yes</option><option>No</option>
+        <option>Yes</option><option>No</option><option>Not sure</option>
       </select>
       <label style={labelStyle}>{t.health}</label>
       <select style={inputStyle} value={form.health_insurance} onChange={e => set('health_insurance', e.target.value)}>
+        <option>Yes</option><option>No</option><option>Not sure</option>
+      </select>
+      <label style={labelStyle}>{t.paidPocket}</label>
+      <select style={inputStyle} value={form.paid_out_of_pocket} onChange={e => set('paid_out_of_pocket', e.target.value)}>
         <option>Yes</option><option>No</option>
       </select>
     </div>,
@@ -228,7 +250,7 @@ export default function RegistrationForm() {
     <div key={5}>
       <label style={labelStyle}>{t.interested}</label>
       <select style={inputStyle} value={form.interested_in} onChange={e => set('interested_in', e.target.value)}>
-        {['EV loan information','Retrofit information','Insurance plans','Fuel saving tips','All of the above'].map(i => <option key={i}>{i}</option>)}
+        {['EV rental offer','Insurance quote','Retrofit information','All of the above','None'].map(i => <option key={i}>{i}</option>)}
       </select>
       <label style={labelStyle}>{t.referral}</label>
       <input style={inputStyle} value={form.referred_by} onChange={e => set('referred_by', e.target.value)} placeholder="e.g. RW-1234" />
