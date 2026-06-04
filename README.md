@@ -1,49 +1,38 @@
 # Road Warrior EV Challenge 🏆
 
-A multilingual rider registration and referral platform built to recruit delivery riders for EV adoption research.
+A multilingual mobile-first rider registration and referral platform built to recruit delivery riders for EV adoption research.
 
 ## Live Links
-- **Frontend:** https://road-warrior-frontend.vercel.app
+- **Main Form:** https://road-warrior-frontend.vercel.app
+- **Score Page:** https://road-warrior-frontend.vercel.app/score
+- **Admin Dashboard:** https://road-warrior-frontend.vercel.app/admin
 - **Backend API:** https://road-warrior-backend.onrender.com
-- **Admin Dashboard:** https://road-warrior-frontend.vercel.app/admin (password: roadwarrior123)
+- **GitHub:** https://github.com/charitha30-bit/road-warrior
 
+## Admin Password
+roadwarrior123
 ## Tech Stack
 | Layer | Technology |
 |---|---|
 | Frontend | React.js + Vite |
 | Backend | Node.js + Express |
 | Database | Supabase (PostgreSQL) |
+| WhatsApp | Meta WhatsApp Cloud API |
 | Frontend Hosting | Vercel |
 | Backend Hosting | Render |
 
 ## Features
-- 6-step mobile-friendly registration form
-- 3 languages — English, Hindi, Kannada
-- Unique referral code for every rider
-- Auto-segmentation — Hot EV Lead, Insurance Lead, EV Rider, Petrol Rider
-- Points system — earn points by referring other riders
-- Password protected admin dashboard with leaderboard
-- Form validation on required fields
-
-## Setup Instructions
-
-### Backend
-```bash
-cd backend
-npm install
-# Create .env file with:
-# SUPABASE_URL=your_supabase_url
-# SUPABASE_ANON_KEY=your_anon_key
-# PORT=5000
-node index.js
-```
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
+✅ 6-step mobile-friendly registration form
+✅ 3 languages — English, Hindi, Kannada
+✅ Unique referral code per rider
+✅ QR code for offline sharing at petrol pumps
+✅ Auto-segmentation — Hot EV Lead, Insurance Lead, EV Rider, Petrol Rider
+✅ Points system with milestone bonuses (10/25/50 referrals)
+✅ Duplicate phone detection
+✅ Score page — check points by phone number
+✅ Password protected admin dashboard
+✅ Meta WhatsApp Cloud API integration
+✅ Separate EV and Petrol challenge questions
 
 ## API Endpoints
 | Method | Endpoint | Description |
@@ -54,8 +43,19 @@ npm run dev
 | POST | /api/admin/login | Admin login |
 | GET | /api/admin/riders | Get all riders (protected) |
 
-## What I Would Add Next
-- WhatsApp confirmation message via Twilio
-- Duplicate phone number detection
-- QR code for referral sharing
-- Charts and analytics in admin dashboard
+## Setup
+### Backend
+```bash
+cd backend
+npm install
+node index.js
+```
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## 5-Line Summary
+Built a multilingual mobile-first rider registration and referral platform using React.js (Vercel), Node.js + Express (Render), Supabase (PostgreSQL), and Meta WhatsApp Cloud API. The system auto-segments riders into Hot EV Lead, Insurance Lead, EV Rider, and Petrol Rider, tracks referral points with milestone bonuses at 10/25/50 referrals, and includes duplicate detection, QR codes for offline sharing, and a password-protected admin dashboard. If I had one more week, I would add a WhatsApp chatbot flow so riders can register entirely over WhatsApp without a browser, and build city-wise analytics charts in the admin dashboard. One thing that didn't work as expected was Meta WhatsApp Cloud API in test mode — it requires manual recipient verification for each number, which would be resolved with a verified business phone number in production.
