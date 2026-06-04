@@ -40,7 +40,7 @@ async function sendWhatsApp(phone, name, referralCode) {
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to: phone,
+        to: phone.startsWith('+') ? phone : `+${phone}`,
         type: 'text',
         text: { body: message }
       })
