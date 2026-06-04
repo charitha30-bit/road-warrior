@@ -99,6 +99,38 @@ app.get('/api/score/:phone', async (req, res) => {
   }
 });
 
+// Admin login
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (password === 'roadwarrior123') {
+    const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
+    res.json({ success: true, token });
+  } else {
+    res.status(401).json({ success: false, error: 'Wrong password' });
+  }
+});
+
+// Verify token middleware
+function verifyAdmin(req, res, next) {
+  const token = req.headers['authorization'];
+  if (!token) return res.status(401).json({ error: 'No token' });
+  next();
+}
+
+// Protected admin route
+app.get('/api/admin/riders', verifyAdmin, async (req, res) => {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/riders?select=*&order=points.desc`,
+      { headers }
+    );
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(process.env.PORT || 5000, () => {
   console.log(`Server running on port ${process.env.PORT}`);
 });
