@@ -29,9 +29,11 @@ function getSegment(data) {
 async function sendWhatsApp(phone, name, referralCode) {
   const token = 'EAAOY6dYoVvgBRqktC4wKUBGBiPz8A7nZCob7eEZCMylnuXwtWeJZCm95gNNxnA2C5VrpN6rpGg9DUYW3RVJ5wRZAKCdb5MU0vkBn34ktgv7ArFo8EXtEDkxiEGf2EsAsGqtB8nrmODlpz4ZCsIVkRosqyySOHpBmVKroUZCfluSw91bFenMVolQR2rNx5PBDXzzVYsSeY8cc603ZBjtOlTn3jxyi4U9B2Hx0RbBmPUcNvPZBIEbCtwyTeFZBRQ0kyznbulMU11EyVIEpuNkcvQfK9WgZDZD'
   const phoneNumberId = '1121568487708918'
+  const formattedPhone = `91${phone.replace(/\D/g, '').slice(-10)}`
   const message = `Welcome ${name}! You are now registered as a Road Warrior! Your referral code is ${referralCode}. Share it with other riders to earn points and rewards. Road Warrior — let's go!`
+
   try {
-    await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -39,12 +41,14 @@ async function sendWhatsApp(phone, name, referralCode) {
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to: `91${phone.replace(/\D/g, '').slice(-10)}`,
+        to: formattedPhone,
         type: 'text',
         text: { body: message }
       })
     })
-    console.log('WhatsApp sent to', phone)
+    const result = await response.json()
+    console.log('WhatsApp response:', JSON.stringify(result))
+    console.log('Sent to:', formattedPhone)
   } catch (e) {
     console.log('WhatsApp failed:', e.message)
   }
