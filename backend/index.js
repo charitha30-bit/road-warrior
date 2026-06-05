@@ -27,7 +27,7 @@ function getSegment(data) {
 }
 
 async function sendWhatsApp(phone, name, referralCode) {
-  const token = 'EAAOY6dYoVvgBRpxhr9O4L6R9VheO4lQr1zKDMExhsu4m8ZAC1ZA4ZAu12NSG8aYkNzOlPU8mvc3e0AQdgWZCa5VdfcvRDN3zQo9dllbuLtaCwXoJKOcT01GlYfv'
+  const token = 'EAAOY6dYoVvgBRpxhr9O4L6R9VheO4lQr1zKDMExhsu4m8ZAC1ZA4ZAu12NSG8aYkNzOlPU8mvc3e0AQdgWZCa5VdfcvRDN3zQo9dlIbuLtaCwXoJKOcT01GIYfVRgv99gLNFjSd9jnKWxt3SI6uyAF6bZBPi5ANPZBEZAqmAeeAtHxPImokwb1dgoVbgycWvwHWk4f9wuXyKqlSUfLPb35kyzkCybsozMnKqZAw0FM6WXxyDj1OUeJy96ED5jmkIePQha7BO9ZCxzjQ6lxq0a33Ji'
   const phoneNumberId = '1121568487708918'
   const formattedPhone = `91${phone.replace(/\D/g, '').slice(-10)}`
   const message = `Welcome ${name}! You are now registered as a Road Warrior! Your referral code is ${referralCode}. Share it with other riders to earn points and rewards. Road Warrior — let's go!`
