@@ -269,7 +269,7 @@ const [lang, setLang] = useState('en')
   ]
 
   return (
-    <div style={{ minHeight: '100vh', padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '20px', maxWidth: '500px', margin: '0 auto', position: 'relative' }}>
       <div style={{ textAlign: 'center', padding: '30px 0 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
           {['EN','हि','ಕ'].map((l, i) => (
@@ -282,8 +282,11 @@ const [lang, setLang] = useState('en')
             </button>
           ))}
         </div>
-        <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#6366f1' }}>{t.title}</h1>
-        <p style={{ color: '#64748b', fontSize: '14px', marginTop: '6px' }}>{t.subtitle}</p>
+        <div style={{ marginBottom: '8px' }}>
+  <span style={{ fontSize: '32px' }}>🏍️</span>
+</div>
+<h1 style={{ fontSize: '24px', fontWeight: '700', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.title}</h1>
+<p style={{ color: '#64748b', fontSize: '14px', marginTop: '6px' }}>{t.subtitle}</p>
       </div>
 
       <div style={{ background: '#1e293b', borderRadius: '4px', height: '6px', marginBottom: '8px' }}>
