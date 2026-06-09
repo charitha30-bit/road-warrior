@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config({ path: __dirname + '/.env' });
 
 const app = express();
@@ -8,6 +9,7 @@ app.use(express.json());
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+const FAST2SMS_KEY = 'uy7XI4TlQSGcHvjp2BWieJ0AzC31DdsktNELMbU9PKwF8nZROrkobKRL7OfYMVDcZIxm1i3BGuJHpdzr';
 
 const headers = {
   'Content-Type': 'application/json',
@@ -15,23 +17,56 @@ const headers = {
   'Authorization': `Bearer ${SUPABASE_KEY}`
 };
 
+// Rate limiting
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: { error: 'Too many registrations from this IP. Try again later.' }
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many login attempts. Try again in 15 minutes.' }
+});
+
 function generateReferralCode() {
   return 'RW-' + Math.floor(1000 + Math.random() * 9000);
 }
 
 function getSegment(data) {
-  if (data.open_to_ev === 'Yes' && data.vehicle_type !== 'Electric two-wheeler') return 'Hot EV Lead';
-  if (data.accident_insurance === 'No' || data.health_insurance === 'No') return 'Insurance Lead';
-  if (data.vehicle_type === 'Electric two-wheeler') return 'EV Rider';
-  return 'Petrol Rider';
+  if (data.vehicle_type === 'Electric two-wheeler' && data.open_to_ev === 'Yes') return 'EV_SALE_LEAD';
+  if (data.vehicle_type === 'Electric two-wheeler') return 'EV_RENTAL_LEAD';
+  if (data.open_to_ev === 'Yes' && data.vehicle_type !== 'Electric two-wheeler') return 'RETROFIT_LEAD';
+  if (data.accident_insurance === 'No') return 'BIKE_INSURANCE_LEAD';
+  if (data.health_insurance === 'No') return 'PERSONAL_INSURANCE_LEAD';
+  return 'PRODUCT_LEAD';
+}
+
+function validatePhone(phone) {
+  return /^[6-9]\d{9}$/.test(phone.replace(/^91/, '').replace(/\D/g, ''));
+}
+
+async function sendSMS(phone, name, referralCode) {
+  const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+  const message = `Welcome ${name}! You are now a Road Warrior! Your referral code is ${referralCode}. Share with riders to earn points!`;
+  try {
+    const response = await fetch(
+      `https://www.fast2sms.com/dev/bulkV2?authorization=${FAST2SMS_KEY}&route=q&message=${encodeURIComponent(message)}&language=english&flash=0&numbers=${cleanPhone}`,
+      { method: 'GET', headers: { 'cache-control': 'no-cache' } }
+    );
+    const result = await response.json();
+    console.log('SMS result:', JSON.stringify(result));
+  } catch (e) {
+    console.log('SMS failed:', e.message);
+  }
 }
 
 async function sendWhatsApp(phone, name, referralCode) {
-  const token = 'EAAOY6dYoVvgBRpxhr9O4L6R9VheO4lQr1zKDMExhsu4m8ZAC1ZA4ZAu12NSG8aYkNzOlPU8mvc3e0AQdgWZCa5VdfcvRDN3zQo9dlIbuLtaCwXoJKOcT01GIYfVRgv99gLNFjSd9jnKWxt3SI6uyAF6bZBPi5ANPZBEZAqmAeeAtHxPImokwb1dgoVbgycWvwHWk4f9wuXyKqlSUfLPb35kyzkCybsozMnKqZAw0FM6WXxyDj1OUeJy96ED5jmkIePQha7BO9ZCxzjQ6lxq0a33Ji'
-  const phoneNumberId = '1121568487708918'
-  const formattedPhone = `91${phone.replace(/\D/g, '').slice(-10)}`
-  const message = `Welcome ${name}! You are now registered as a Road Warrior! Your referral code is ${referralCode}. Share it with other riders to earn points and rewards. Road Warrior — let's go!`
-
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = '1121568487708918';
+  const formattedPhone = `91${phone.replace(/\D/g, '').slice(-10)}`;
+  const message = `Welcome ${name}! You are now registered as a Road Warrior! Your referral code is ${referralCode}. Share it with other riders to earn points and rewards. Road Warrior — let's go!`;
   try {
     const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
       method: 'POST',
@@ -45,34 +80,35 @@ async function sendWhatsApp(phone, name, referralCode) {
         type: 'text',
         text: { body: message }
       })
-    })
-    const result = await response.json()
-    console.log('WhatsApp response:', JSON.stringify(result))
-    console.log('Sent to:', formattedPhone)
+    });
+    const result = await response.json();
+    console.log('WhatsApp response:', JSON.stringify(result));
   } catch (e) {
-    console.log('WhatsApp failed:', e.message)
+    console.log('WhatsApp failed:', e.message);
   }
 }
 
 // Register rider
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', registerLimiter, async (req, res) => {
   try {
     const data = req.body;
+
+    // Phone validation
+    if (!validatePhone(data.whatsapp)) {
+      return res.status(400).json({ success: false, error: 'invalid_phone', message: 'Please enter a valid Indian mobile number' });
+    }
+
     const referralCode = generateReferralCode();
     const segment = getSegment(data);
 
-    // Check duplicate phone
+    // Check duplicate
     const dupCheck = await fetch(
       `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${data.whatsapp}&select=id`,
       { headers }
     );
     const existing = await dupCheck.json();
     if (existing.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'duplicate',
-        message: 'This WhatsApp number is already registered!'
-      });
+      return res.status(400).json({ success: false, error: 'duplicate', message: 'This WhatsApp number is already registered!' });
     }
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/riders`, {
@@ -82,7 +118,7 @@ app.post('/api/register', async (req, res) => {
         name: data.name,
         whatsapp: data.whatsapp,
         city: data.city,
-        platform: data.platform,
+        platform: Array.isArray(data.platform) ? data.platform.join(', ') : data.platform,
         experience: data.experience,
         vehicle_type: data.vehicle_type,
         brand: data.brand || '',
@@ -93,7 +129,8 @@ app.post('/api/register', async (req, res) => {
         open_to_ev: data.open_to_ev,
         accident_insurance: data.accident_insurance,
         health_insurance: data.health_insurance,
-        interested_in: data.interested_in,
+        paid_out_of_pocket: data.paid_out_of_pocket || 'No',
+        interested_in: Array.isArray(data.interested_in) ? data.interested_in.join(', ') : data.interested_in,
         referred_by: data.referred_by || '',
         referral_code: referralCode,
         points: 10,
@@ -117,44 +154,35 @@ app.post('/api/register', async (req, res) => {
       if (referrers.length > 0) {
         const referrer = referrers[0];
         const newPoints = referrer.points + 5;
+        await fetch(`${SUPABASE_URL}/rest/v1/riders?id=eq.${referrer.id}`, {
+          method: 'PATCH', headers,
+          body: JSON.stringify({ points: newPoints })
+        });
 
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/riders?id=eq.${referrer.id}`,
-          {
-            method: 'PATCH',
-            headers,
-            body: JSON.stringify({ points: newPoints })
-          }
-        );
-
-        // Count total referrals
         const countCheck = await fetch(
           `${SUPABASE_URL}/rest/v1/riders?referred_by=eq.${data.referred_by}&select=id`,
           { headers }
         );
         const referralCount = (await countCheck.json()).length;
 
-        // Milestone bonus
         let bonusPoints = 0;
         if (referralCount === 10) bonusPoints = 100;
         else if (referralCount === 25) bonusPoints = 300;
         else if (referralCount === 50) bonusPoints = 500;
 
         if (bonusPoints > 0) {
-          await fetch(
-            `${SUPABASE_URL}/rest/v1/riders?id=eq.${referrer.id}`,
-            {
-              method: 'PATCH',
-              headers,
-              body: JSON.stringify({ points: newPoints + bonusPoints })
-            }
-          );
-          console.log(`Milestone bonus ${bonusPoints} points added to ${referrer.name}`);
+          await fetch(`${SUPABASE_URL}/rest/v1/riders?id=eq.${referrer.id}`, {
+            method: 'PATCH', headers,
+            body: JSON.stringify({ points: newPoints + bonusPoints })
+          });
         }
       }
     }
 
+    // Send SMS + WhatsApp
+    await sendSMS(data.whatsapp, data.name, referralCode);
     await sendWhatsApp(data.whatsapp, data.name, referralCode);
+
     res.json({ success: true, referralCode, points: 10, segment });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -190,14 +218,29 @@ app.get('/api/score/:phone', async (req, res) => {
   }
 });
 
-// Admin login
-app.post('/api/admin/login', (req, res) => {
+// Admin login with brute force protection
+const loginAttempts = {};
+app.post('/api/admin/login', adminLimiter, (req, res) => {
   const { password } = req.body;
-  if (password === 'roadwarrior123') {
+  const ip = req.ip;
+
+  if (!loginAttempts[ip]) loginAttempts[ip] = { count: 0, lockedUntil: null };
+
+  if (loginAttempts[ip].lockedUntil && Date.now() < loginAttempts[ip].lockedUntil) {
+    return res.status(429).json({ error: 'Too many attempts. Try again in 15 minutes.' });
+  }
+
+  if (password === 'BharatRiders@2025') {
+    loginAttempts[ip] = { count: 0, lockedUntil: null };
     const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
     res.json({ success: true, token });
   } else {
-    res.status(401).json({ success: false, error: 'Wrong password' });
+    loginAttempts[ip].count++;
+    if (loginAttempts[ip].count >= 5) {
+      loginAttempts[ip].lockedUntil = Date.now() + 15 * 60 * 1000;
+      return res.status(429).json({ error: 'Account locked for 15 minutes due to too many failed attempts.' });
+    }
+    res.status(401).json({ success: false, error: 'Wrong password', attemptsLeft: 5 - loginAttempts[ip].count });
   }
 });
 
