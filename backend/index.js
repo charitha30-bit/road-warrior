@@ -92,6 +92,29 @@ async function sendWhatsApp(phone, name, referralCode) {
     console.log('WhatsApp failed:', e.message)
   }
 }
+
+//telegram 
+async function sendTelegram(name, phone, referralCode, segment) {
+  const TELEGRAM_TOKEN = '8671849823:AAFZgy4Pj_gu1kSbwAHvduD86KbtombgeEs';
+  const CHAT_ID = '6841636854';
+  
+  const message = `🏍️ *New Road Warrior Registered!*\n\n👤 Name: ${name}\n📱 Phone: ${phone}\n🎟️ Referral Code: ${referralCode}\n🏷️ Segment: ${segment}\n\n✅ Registered successfully!`;
+  
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: message,
+        parse_mode: 'Markdown'
+      })
+    });
+    console.log('Telegram sent!');
+  } catch (e) {
+    console.log('Telegram failed:', e.message);
+  }
+}
 // Register rider
 app.post('/api/register', registerLimiter, async (req, res) => {
   try {
@@ -186,6 +209,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     // Send SMS + WhatsApp
     await sendSMS(data.whatsapp, data.name, referralCode);
     await sendWhatsApp(data.whatsapp, data.name, referralCode);
+    await sendTelegram(data.name, data.whatsapp, referralCode, segment);
 
     res.json({ success: true, referralCode, points: 10, segment });
   } catch (err) {
