@@ -206,7 +206,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       }
     }
 
-    // Send SMS + WhatsApp
+    // Send SMS + WhatsApp + telegram
     await sendSMS(data.whatsapp, data.name, referralCode);
     await sendWhatsApp(data.whatsapp, data.name, referralCode);
     await sendTelegram(data.name, data.whatsapp, referralCode, segment);
