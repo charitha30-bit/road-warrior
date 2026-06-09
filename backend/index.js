@@ -11,6 +11,8 @@ app.set('trust proxy', 1);
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
 const FAST2SMS_KEY = 'uy7XI4TlQSGcHvjp2BWieJ0AzC31DdsktNELMbU9PKwF8nZROrkobKRL7OfYMVDcZIxm1i3BGuJHpdzr';
+const TELEGRAM_TOKEN = '8671849823:AAFZgy4Pj_gu1kSbwAHvduD86KbtombgeEs';
+const ADMIN_CHAT_ID = '6841636854';
 
 const headers = {
   'Content-Type': 'application/json',
@@ -18,7 +20,6 @@ const headers = {
   'Authorization': `Bearer ${SUPABASE_KEY}`
 };
 
-// Rate limiting
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,
@@ -68,22 +69,15 @@ async function sendWhatsApp(phone, name, referralCode) {
   const token = 'EAAOY6dYoVvgBRpoWM5SwUxhPlVoNmlybscTqNOZBMhB2hcs6v00GV2GZCN1unjiTWNGC5DEX0IJTTbsuif5eD2ZBgGWhvtm3mymcTkwpQZA5PZAxgvdZBIwBaZArhAZCnxn3IucmKMyczTnXHQNZBpAt9MkBrIgHo3nJJW6W5oM4KPFfvbXy90NEmMwQlZBQRhNZC9df13S4A9vs9hiDFYZAqSFfEf0Blsi4ZBTRiKSG4SlOl7fEEm9siWbZAAJNAUNmhBCA8GR7moBgPzusZAXY1aE4FMSnwZDZD'
   const phoneNumberId = '1121568487708918'
   const formattedPhone = `91${phone.replace(/\D/g, '').slice(-10)}`
-
   try {
     const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to: formattedPhone,
         type: 'template',
-        template: {
-          name: 'hello_world',
-          language: { code: 'en_US' }
-        }
+        template: { name: 'hello_world', language: { code: 'en_US' } }
       })
     })
     const result = await response.json()
@@ -93,21 +87,12 @@ async function sendWhatsApp(phone, name, referralCode) {
   }
 }
 
-//telegram 
-async function sendTelegram(name, phone, referralCode, segment) {
-  const TELEGRAM_TOKEN = '8671849823:AAFZgy4Pj_gu1kSbwAHvduD86KbtombgeEs';
-  const CHAT_ID = '6841636854';
-  
-  const message = `🏍️ New Road Warrior Registered!\n\n👤 Name: ${name}\n📱 Phone: ${phone}\n🎟️ Referral Code: ${referralCode}\n🏷️ Segment: ${segment}\n\n✅ Registered successfully!`;
-  
+async function sendTelegramMessage(chatId, text) {
   try {
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: message
-      })
+      body: JSON.stringify({ chat_id: chatId, text })
     });
     const result = await res.json();
     console.log('Telegram result:', JSON.stringify(result));
@@ -115,12 +100,17 @@ async function sendTelegram(name, phone, referralCode, segment) {
     console.log('Telegram failed:', e.message);
   }
 }
+
+async function sendTelegram(name, phone, referralCode, segment) {
+  const message = `🏍️ New Road Warrior Registered!\n\n👤 Name: ${name}\n📱 Phone: ${phone}\n🎟️ Referral Code: ${referralCode}\n🏷️ Segment: ${segment}\n\n✅ Registered successfully!`;
+  await sendTelegramMessage(ADMIN_CHAT_ID, message);
+}
+
 // Register rider
 app.post('/api/register', registerLimiter, async (req, res) => {
   try {
     const data = req.body;
 
-    // Phone validation
     if (!validatePhone(data.whatsapp)) {
       return res.status(400).json({ success: false, error: 'invalid_phone', message: 'Please enter a valid Indian mobile number' });
     }
@@ -128,7 +118,6 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     const referralCode = generateReferralCode();
     const segment = getSegment(data);
 
-    // Check duplicate
     const dupCheck = await fetch(
       `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${data.whatsapp}&select=id`,
       { headers }
@@ -171,7 +160,6 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       throw new Error(JSON.stringify(err));
     }
 
-    // Add points to referrer + milestone bonuses
     if (data.referred_by) {
       const refCheck = await fetch(
         `${SUPABASE_URL}/rest/v1/riders?referral_code=eq.${data.referred_by}&select=id,points,name,whatsapp`,
@@ -206,7 +194,6 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       }
     }
 
-    // Send SMS + WhatsApp + telegram
     await sendSMS(data.whatsapp, data.name, referralCode);
     await sendWhatsApp(data.whatsapp, data.name, referralCode);
     await sendTelegram(data.name, data.whatsapp, referralCode, segment);
@@ -215,6 +202,44 @@ app.post('/api/register', registerLimiter, async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// Telegram webhook for rider messages
+app.post('/api/telegram/webhook', async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.sendStatus(200);
+
+  const chatId = message.chat.id;
+  const text = message.text || '';
+
+  let reply = '';
+
+  if (text === '/start') {
+    reply = `🏍️ Welcome to Road Warrior EV Challenge!\n\nRegister here:\nhttps://road-warrior-frontend.vercel.app\n\nAfter registering, send your 10-digit phone number to check your score!\n\nType /help for more options.`;
+  } else if (text === '/help') {
+    reply = `Available commands:\n/start - Welcome message\n\nSend your 10-digit phone number to check your score!\n\nVisit: https://road-warrior-frontend.vercel.app`;
+  } else if (/^\d{10}$/.test(text)) {
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${text}&select=*`,
+        { headers }
+      );
+      const data = await response.json();
+      if (data.length > 0) {
+        const rider = data[0];
+        reply = `🏆 Your Score\n\nName: ${rider.name}\nPoints: ${rider.points}\nReferral Code: ${rider.referral_code}\nSegment: ${rider.segment?.replace(/_/g, ' ')}\n\nShare your code to earn more points!\nhttps://road-warrior-frontend.vercel.app?ref=${rider.referral_code}`;
+      } else {
+        reply = `❌ Number not found. Please register first at:\nhttps://road-warrior-frontend.vercel.app`;
+      }
+    } catch (e) {
+      reply = 'Error checking score. Try again later.';
+    }
+  } else {
+    reply = `👋 Send your 10-digit phone number to check your score!\n\nOr register at:\nhttps://road-warrior-frontend.vercel.app`;
+  }
+
+  await sendTelegramMessage(chatId, reply);
+  res.sendStatus(200);
 });
 
 // Get all riders
@@ -246,7 +271,6 @@ app.get('/api/score/:phone', async (req, res) => {
   }
 });
 
-// Admin login with brute force protection
 const loginAttempts = {};
 app.post('/api/admin/login', adminLimiter, (req, res) => {
   const { password } = req.body;
@@ -272,14 +296,12 @@ app.post('/api/admin/login', adminLimiter, (req, res) => {
   }
 });
 
-// Verify token middleware
 function verifyAdmin(req, res, next) {
   const token = req.headers['authorization'];
   if (!token) return res.status(401).json({ error: 'No token' });
   next();
 }
 
-// Protected admin route
 app.get('/api/admin/riders', verifyAdmin, async (req, res) => {
   try {
     const response = await fetch(
