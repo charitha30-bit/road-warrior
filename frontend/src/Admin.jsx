@@ -10,6 +10,7 @@ export default function Admin() {
   const [token, setToken] = useState(localStorage.getItem('adminToken'))
   const [password, setPassword] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
+  const [loginError, setLoginError] = useState('')
 
   useEffect(() => {
     if (token) fetchRiders()
@@ -31,12 +32,17 @@ export default function Admin() {
 
   const handleLogin = async () => {
     setLoginLoading(true)
+    setLoginError('')
     try {
       const res = await axios.post(`${API}/api/admin/login`, { password })
       localStorage.setItem('adminToken', res.data.token)
       setToken(res.data.token)
     } catch (e) {
-      alert('Wrong password!')
+      if (e.response?.data?.error) {
+        setLoginError(e.response.data.error)
+      } else {
+        setLoginError('Wrong password!')
+      }
     }
     setLoginLoading(false)
   }
@@ -47,14 +53,23 @@ export default function Admin() {
     setRiders([])
   }
 
-  const segments = ['All', 'Hot EV Lead', 'Insurance Lead', 'EV Rider', 'Petrol Rider']
+  const segments = ['All', 'EV_SALE_LEAD', 'EV_RENTAL_LEAD', 'RETROFIT_LEAD', 'BIKE_INSURANCE_LEAD', 'PERSONAL_INSURANCE_LEAD', 'PRODUCT_LEAD']
   const filtered = filter === 'All' ? riders : riders.filter(r => r.segment === filter)
+
+  const segmentColor = (seg) => {
+    if (seg === 'EV_SALE_LEAD') return '#10b981'
+    if (seg === 'EV_RENTAL_LEAD') return '#3b82f6'
+    if (seg === 'RETROFIT_LEAD') return '#f97316'
+    if (seg === 'BIKE_INSURANCE_LEAD') return '#f59e0b'
+    if (seg === 'PERSONAL_INSURANCE_LEAD') return '#ef4444'
+    return '#8b5cf6'
+  }
 
   if (!token) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a' }}>
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '40px', textAlign: 'center', width: '320px' }}>
-        <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔐</div>
-        <h2 style={{ color: '#6366f1', marginBottom: '8px' }}>Admin Login</h2>
+      <div style={{ background: '#1e293b', borderRadius: '20px', padding: '40px', textAlign: 'center', width: '320px', border: '1px solid #334155' }}>
+        <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔐</div>
+        <h2 style={{ background: 'linear-gradient(90deg, #f97316, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '8px', fontSize: '22px' }}>Admin Login</h2>
         <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '24px' }}>Road Warrior Dashboard</p>
         <input
           type="password"
@@ -62,10 +77,11 @@ export default function Admin() {
           value={password}
           onChange={e => setPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleLogin()}
-          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0f172a', color: '#fff', fontSize: '15px', marginBottom: '12px', boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '2px solid #334155', background: '#0f172a', color: '#fff', fontSize: '15px', marginBottom: '12px', boxSizing: 'border-box' }}
         />
+        {loginError && <p style={{ color: '#ef4444', fontSize: '13px', marginBottom: '12px' }}>{loginError}</p>}
         <button onClick={handleLogin} disabled={loginLoading}
-          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: 'none', background: '#6366f1', color: '#fff', fontSize: '15px', cursor: 'pointer', fontWeight: '600' }}>
+          style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #f97316, #ea580c)', color: '#fff', fontSize: '16px', cursor: 'pointer', fontWeight: '700', boxShadow: '0 4px 15px rgba(249,115,22,0.4)' }}>
           {loginLoading ? 'Logging in...' : 'Login →'}
         </button>
       </div>
@@ -74,35 +90,38 @@ export default function Admin() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a' }}>
-      <p style={{ color: '#6366f1', fontSize: '18px' }}>Loading riders...</p>
+      <p style={{ color: '#f97316', fontSize: '18px' }}>Loading riders...</p>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', padding: '20px', maxWidth: '800px', margin: '0 auto', background: '#0f172a' }}>
+    <div style={{ minHeight: '100vh', padding: '20px', maxWidth: '900px', margin: '0 auto', background: '#0f172a' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
         <div>
-          <h1 style={{ color: '#6366f1', fontSize: '24px', margin: 0 }}>Admin Dashboard</h1>
+          <div style={{ fontSize: '28px', marginBottom: '4px' }}>🏍️</div>
+          <h1 style={{ background: 'linear-gradient(90deg, #f97316, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '24px', margin: 0 }}>Admin Dashboard</h1>
           <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>Road Warrior EV Challenge</p>
         </div>
         <button onClick={handleLogout}
-          style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #334155', background: 'transparent', color: '#94a3b8', cursor: 'pointer', fontSize: '13px' }}>
+          style={{ padding: '10px 20px', borderRadius: '10px', border: '2px solid #334155', background: 'transparent', color: '#94a3b8', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
           Logout
         </button>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '28px' }}>
         {[
-          { label: 'Total Riders', value: riders.length, color: '#6366f1' },
-          { label: 'Hot EV Leads', value: riders.filter(r => r.segment === 'Hot EV Lead').length, color: '#10b981' },
-          { label: 'Insurance Leads', value: riders.filter(r => r.segment === 'Insurance Lead').length, color: '#f59e0b' },
-          { label: 'EV Riders', value: riders.filter(r => r.segment === 'EV Rider').length, color: '#3b82f6' },
+          { label: 'Total Riders', value: riders.length, color: '#f97316' },
+          { label: 'EV Sale Leads', value: riders.filter(r => r.segment === 'EV_SALE_LEAD').length, color: '#10b981' },
+          { label: 'EV Rental', value: riders.filter(r => r.segment === 'EV_RENTAL_LEAD').length, color: '#3b82f6' },
+          { label: 'Retrofit', value: riders.filter(r => r.segment === 'RETROFIT_LEAD').length, color: '#f97316' },
+          { label: 'Insurance', value: riders.filter(r => r.segment?.includes('INSURANCE')).length, color: '#ef4444' },
+          { label: 'Product', value: riders.filter(r => r.segment === 'PRODUCT_LEAD').length, color: '#8b5cf6' },
         ].map(s => (
-          <div key={s.label} style={{ background: '#1e293b', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
-            <p style={{ color: '#64748b', fontSize: '12px', marginBottom: '4px' }}>{s.label}</p>
+          <div key={s.label} style={{ background: '#1e293b', borderRadius: '14px', padding: '16px', textAlign: 'center', border: '1px solid #334155' }}>
+            <p style={{ color: '#64748b', fontSize: '11px', marginBottom: '4px' }}>{s.label}</p>
             <p style={{ color: s.color, fontSize: '28px', fontWeight: '700', margin: 0 }}>{s.value}</p>
           </div>
         ))}
@@ -112,42 +131,42 @@ export default function Admin() {
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {segments.map(s => (
           <button key={s} onClick={() => setFilter(s)}
-            style={{ padding: '6px 14px', borderRadius: '20px', border: '1px solid',
-              borderColor: filter === s ? '#6366f1' : '#334155',
-              background: filter === s ? '#6366f1' : 'transparent',
-              color: '#fff', cursor: 'pointer', fontSize: '13px' }}>
-            {s}
+            style={{ padding: '8px 14px', borderRadius: '20px', border: '2px solid',
+              borderColor: filter === s ? '#f97316' : '#334155',
+              background: filter === s ? '#f97316' : 'transparent',
+              color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: filter === s ? '600' : '400' }}>
+            {s === 'All' ? 'All' : s.replace(/_/g, ' ')}
           </button>
         ))}
       </div>
 
       {/* Leaderboard */}
-      <h2 style={{ color: '#fff', fontSize: '16px', marginBottom: '12px' }}>
+      <h2 style={{ color: '#fff', fontSize: '16px', marginBottom: '16px', fontWeight: '600' }}>
         Leaderboard — {filtered.length} riders
       </h2>
+
       {filtered.map((r, i) => (
-        <div key={r.id} style={{ background: '#1e293b', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
+        <div key={r.id} style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', marginBottom: '12px', border: '1px solid #334155' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#6366f1',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '14px', fontWeight: '700', color: '#fff', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #f97316, #ea580c)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700', color: '#fff', flexShrink: 0 }}>
                 {i + 1}
               </div>
               <div>
-                <p style={{ color: '#fff', fontWeight: '600', fontSize: '15px', margin: 0 }}>{r.name || 'Unknown'}</p>
-                <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>{r.city} • {r.platform} • {r.whatsapp}</p>
+                <p style={{ color: '#fff', fontWeight: '600', fontSize: '16px', margin: 0 }}>{r.name || 'Unknown'}</p>
+                <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>{r.city} {r.pin_code ? `- ${r.pin_code}` : ''} • {r.whatsapp}</p>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <p style={{ color: '#6366f1', fontWeight: '700', fontSize: '18px', margin: 0 }}>{r.points} pts</p>
-              <p style={{ color: '#10b981', fontSize: '12px', margin: 0 }}>{r.segment}</p>
+              <p style={{ color: '#f97316', fontWeight: '700', fontSize: '20px', margin: 0 }}>{r.points} pts</p>
+              <p style={{ color: segmentColor(r.segment), fontSize: '11px', margin: 0, fontWeight: '600' }}>{r.segment?.replace(/_/g, ' ')}</p>
             </div>
           </div>
-          <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ marginTop: '14px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ background: '#0f172a', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', color: '#94a3b8' }}>{r.vehicle_type}</span>
             <span style={{ background: '#0f172a', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', color: '#94a3b8' }}>₹{r.weekly_fuel}/week</span>
-            <span style={{ background: '#0f172a', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', color: '#94a3b8' }}>Code: {r.referral_code}</span>
+            <span style={{ background: '#0f172a', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', color: '#f97316' }}>Code: {r.referral_code}</span>
+            <span style={{ background: '#0f172a', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', color: '#94a3b8' }}>{r.platform}</span>
             {r.accident_insurance === 'No' && <span style={{ background: '#7f1d1d', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', color: '#fca5a5' }}>No Accident Insurance</span>}
             {r.health_insurance === 'No' && <span style={{ background: '#7f1d1d', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', color: '#fca5a5' }}>No Health Insurance</span>}
           </div>
