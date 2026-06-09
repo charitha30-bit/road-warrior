@@ -6,6 +6,7 @@ require('dotenv').config({ path: __dirname + '/.env' });
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.set('trust proxy', 1);
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
@@ -21,7 +22,8 @@ const headers = {
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,
-  message: { error: 'Too many registrations from this IP. Try again later.' }
+  message: { error: 'Too many registrations from this IP. Try again later.' },
+  trustProxy: false
 });
 
 const adminLimiter = rateLimit({
