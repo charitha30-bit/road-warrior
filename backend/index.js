@@ -65,10 +65,10 @@ async function sendSMS(phone, name, referralCode) {
 }
 
 async function sendWhatsApp(phone, name, referralCode) {
-  const token = process.env.WHATSAPP_TOKEN;
-  const phoneNumberId = '1121568487708918';
-  const formattedPhone = `91${phone.replace(/\D/g, '').slice(-10)}`;
-  const message = `Welcome ${name}! You are now registered as a Road Warrior! Your referral code is ${referralCode}. Share it with other riders to earn points and rewards. Road Warrior — let's go!`;
+  const token = 'EAAOY6dYoVvgBRpoWM5SwUxhPlVoNmlybscTqNOZBMhB2hcs6v00GV2GZCN1unjiTWNGC5DEX0IJTTbsuif5eD2ZBgGWhvtm3mymcTkwpQZA5PZAxgvdZBIwBaZArhAZCnxn3IucmKMyczTnXHQNZBpAt9MkBrIgHo3nJJW6W5oM4KPFfvbXy90NEmMwQlZBQRhNZC9df13S4A9vs9hiDFYZAqSFfEf0Blsi4ZBTRiKSG4SlOl7fEEm9siWbZAAJNAUNmhBCA8GR7moBgPzusZAXY1aE4FMSnwZDZD'
+  const phoneNumberId = '1121568487708918'
+  const formattedPhone = `91${phone.replace(/\D/g, '').slice(-10)}`
+
   try {
     const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
       method: 'POST',
@@ -79,17 +79,19 @@ async function sendWhatsApp(phone, name, referralCode) {
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to: formattedPhone,
-        type: 'text',
-        text: { body: message }
+        type: 'template',
+        template: {
+          name: 'hello_world',
+          language: { code: 'en_US' }
+        }
       })
-    });
-    const result = await response.json();
-    console.log('WhatsApp response:', JSON.stringify(result));
+    })
+    const result = await response.json()
+    console.log('WhatsApp response:', JSON.stringify(result))
   } catch (e) {
-    console.log('WhatsApp failed:', e.message);
+    console.log('WhatsApp failed:', e.message)
   }
 }
-
 // Register rider
 app.post('/api/register', registerLimiter, async (req, res) => {
   try {
