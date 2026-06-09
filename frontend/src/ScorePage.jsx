@@ -71,6 +71,13 @@ export default function ScorePage() {
                 <div style={{ background: '#1e293b', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
                   <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>Your Referral Code</p>
                   <p style={{ color: '#f97316', fontSize: '28px', fontWeight: '700', letterSpacing: '4px' }}>{rider.referral_code}</p>
+<button onClick={() => {
+  navigator.clipboard.writeText(rider.referral_code)
+  alert('Referral code copied!')
+}}
+style={{ marginTop: '10px', padding: '8px 20px', borderRadius: '8px', border: '2px solid #f97316', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+  📋 Copy Code
+</button>
                 </div>
 
                 <div style={{ background: '#1e293b', borderRadius: '12px', padding: '12px' }}>
