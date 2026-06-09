@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 
 const API = 'https://road-warrior-backend.onrender.com'
@@ -71,16 +71,38 @@ export default function RegistrationForm() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [locationStatus, setLocationStatus] = useState('checking')
   const t = translations[lang]
 
   const urlParams = new URLSearchParams(window.location.search)
   const refFromURL = urlParams.get('ref') || ''
 
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords
+          const inBangalore =
+            latitude >= 12.7 && latitude <= 13.2 &&
+            longitude >= 77.4 && longitude <= 77.8
+          if (inBangalore) {
+            setLocationStatus('bangalore')
+          } else {
+            setLocationStatus('allowed')
+          }
+        },
+        () => setLocationStatus('allowed')
+      )
+    } else {
+      setLocationStatus('allowed')
+    }
+  }, [])
+
   const [form, setForm] = useState({
     name: '', whatsapp: '', city: '', pin_code: '',
     platform: [], experience: 'Less than 1 year',
     vehicle_type: 'Petrol two-wheeler', brand: '',
-    fuel_type: 'Petrol', weekly_fuel: '', monthly_maintenance: '',
+    fuel_type: 'Petrol pump', weekly_fuel: '', monthly_maintenance: '',
     challenges: [], switch_reasons: [], open_to_ev: 'Yes',
     accident_insurance: 'Yes', health_insurance: 'Yes',
     paid_out_of_pocket: 'No', interested_in: [],
@@ -158,12 +180,28 @@ export default function RegistrationForm() {
 
   const isEV = form.vehicle_type === 'Electric two-wheeler'
 
+  // Location checking screen
+  if (locationStatus === 'checking') return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📍</div>
+        <p style={{ color: '#f97316', fontSize: '18px', fontWeight: '600' }}>Detecting your location...</p>
+        <p style={{ color: '#64748b', fontSize: '14px', marginTop: '8px' }}>Please allow location access</p>
+      </div>
+    </div>
+  )
+
   if (submitted) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ background: '#1e293b', borderRadius: '20px', padding: '40px', maxWidth: '440px', width: '100%', textAlign: 'center', border: '1px solid #f97316' }}>
         <div style={{ fontSize: '56px', marginBottom: '16px' }}>🏆</div>
         <h2 style={{ color: '#f97316', marginBottom: '8px', fontSize: '24px' }}>Welcome, {form.name}!</h2>
         <p style={{ color: '#94a3b8', marginBottom: '24px' }}>You are now a Road Warrior!</p>
+        {locationStatus === 'bangalore' && (
+          <div style={{ background: '#10b98120', border: '1px solid #10b981', borderRadius: '10px', padding: '10px', marginBottom: '16px' }}>
+            <p style={{ color: '#10b981', fontSize: '13px' }}>📍 Verified Bangalore Rider!</p>
+          </div>
+        )}
         <div style={{ background: '#0f172a', borderRadius: '16px', padding: '24px', marginBottom: '20px' }}>
           <p style={{ color: '#94a3b8', fontSize: '13px' }}>Your Referral Code</p>
           <p style={{ color: '#f97316', fontSize: '36px', fontWeight: '700', letterSpacing: '6px' }}>{result?.referralCode}</p>
@@ -182,7 +220,7 @@ export default function RegistrationForm() {
           </div>
           <div>
             <p style={{ color: '#94a3b8', fontSize: '13px' }}>Segment</p>
-            <p style={{ color: '#10b981', fontSize: '14px', fontWeight: '600' }}>{result?.segment}</p>
+            <p style={{ color: '#10b981', fontSize: '14px', fontWeight: '600' }}>{result?.segment?.replace(/_/g, ' ')}</p>
           </div>
         </div>
         <div style={{ marginTop: '16px', background: '#0f172a', borderRadius: '8px', padding: '12px' }}>
@@ -202,20 +240,15 @@ export default function RegistrationForm() {
   )
 
   const steps = [
-    // Step 0 — Personal Info
     <div key={0}>
       <label style={labelStyle}>{t.name} *</label>
       <input style={inputStyle} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Enter your full name" />
-
       <label style={labelStyle}>{t.whatsapp} *</label>
       <input style={inputStyle} value={form.whatsapp} onChange={e => set('whatsapp', e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10-digit mobile number" maxLength={10} />
-
       <label style={labelStyle}>{t.city} *</label>
       <input style={inputStyle} value={form.city} onChange={e => set('city', e.target.value)} placeholder="Your city" />
-
       <label style={labelStyle}>{t.pincode} *</label>
       <input style={inputStyle} value={form.pin_code} onChange={e => set('pin_code', e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="6-digit PIN code" maxLength={6} />
-
       <label style={labelStyle}>{t.platform} *</label>
       <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
         {['Swiggy', 'Zomato', 'Blinkit', 'Zepto', 'Porter', 'Dunzo', 'Ola', 'Uber', 'Other'].map(p => (
@@ -225,30 +258,25 @@ export default function RegistrationForm() {
       {form.platform.includes('Other') && (
         <input style={{ ...inputStyle, marginTop: '10px' }} placeholder="Please specify platform" onChange={e => set('platform_other', e.target.value)} />
       )}
-
       <label style={labelStyle}>{t.experience}</label>
       <select style={inputStyle} value={form.experience} onChange={e => set('experience', e.target.value)}>
         {['Less than 1 year', '1-2 years', '3-5 years', '5+ years'].map(x => <option key={x}>{x}</option>)}
       </select>
     </div>,
 
-    // Step 1 — Vehicle Info
     <div key={1}>
       <label style={labelStyle}>{t.vehicle}</label>
       <select style={inputStyle} value={form.vehicle_type} onChange={e => set('vehicle_type', e.target.value)}>
         {['Petrol two-wheeler', 'Electric two-wheeler', 'Diesel two-wheeler', 'Other'].map(v => <option key={v}>{v}</option>)}
       </select>
-
       <label style={labelStyle}>{t.brand}</label>
       <input style={inputStyle} value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="e.g. Honda Activa 6G, Ola S1 Pro" />
-
       <label style={labelStyle}>{t.fuel}</label>
       <select style={inputStyle} value={form.fuel_type} onChange={e => set('fuel_type', e.target.value)}>
         {['Petrol pump', 'Home charging', 'Battery swapping station', 'Other'].map(f => <option key={f}>{f}</option>)}
       </select>
     </div>,
 
-    // Step 2 — Expenses
     <div key={2}>
       <label style={labelStyle}>{t.weekly} *</label>
       <input style={inputStyle} type="number" value={form.weekly_fuel} onChange={e => set('weekly_fuel', e.target.value)} placeholder="e.g. 500" />
@@ -256,7 +284,6 @@ export default function RegistrationForm() {
       <input style={inputStyle} type="number" value={form.monthly_maintenance} onChange={e => set('monthly_maintenance', e.target.value)} placeholder="e.g. 1000" />
     </div>,
 
-    // Step 3 — Challenges
     <div key={3}>
       <label style={labelStyle}>{t.challenges}</label>
       <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -264,7 +291,6 @@ export default function RegistrationForm() {
           <button key={c} type="button" onClick={() => toggle('challenges', c)} style={chipStyle(form.challenges.includes(c))}>{c}</button>
         ))}
       </div>
-
       {isEV && (
         <>
           <label style={{ ...labelStyle, color: '#10b981' }}>EV Specific Challenges</label>
@@ -275,7 +301,6 @@ export default function RegistrationForm() {
           </div>
         </>
       )}
-
       {!isEV && (
         <>
           <label style={{ ...labelStyle, color: '#f59e0b' }}>Petrol Specific Challenges</label>
@@ -286,12 +311,10 @@ export default function RegistrationForm() {
           </div>
         </>
       )}
-
       <label style={labelStyle}>{t.openEV}</label>
       <select style={inputStyle} value={form.open_to_ev} onChange={e => set('open_to_ev', e.target.value)}>
         {['Yes', 'No', 'Already on EV', 'Need more information'].map(o => <option key={o}>{o}</option>)}
       </select>
-
       {!isEV && (
         <>
           <label style={labelStyle}>{t.switchReasons}</label>
@@ -304,25 +327,21 @@ export default function RegistrationForm() {
       )}
     </div>,
 
-    // Step 4 — Insurance
     <div key={4}>
       <label style={labelStyle}>{t.accident}</label>
       <select style={inputStyle} value={form.accident_insurance} onChange={e => set('accident_insurance', e.target.value)}>
         {['Yes', 'No', 'Not sure'].map(o => <option key={o}>{o}</option>)}
       </select>
-
       <label style={labelStyle}>{t.health}</label>
       <select style={inputStyle} value={form.health_insurance} onChange={e => set('health_insurance', e.target.value)}>
         {['Yes', 'No', 'Not sure'].map(o => <option key={o}>{o}</option>)}
       </select>
-
       <label style={labelStyle}>{t.paidPocket}</label>
       <select style={inputStyle} value={form.paid_out_of_pocket} onChange={e => set('paid_out_of_pocket', e.target.value)}>
         {['Yes', 'No'].map(o => <option key={o}>{o}</option>)}
       </select>
     </div>,
 
-    // Step 5 — Interests
     <div key={5}>
       <label style={labelStyle}>{t.interested}</label>
       <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -330,17 +349,14 @@ export default function RegistrationForm() {
           <button key={i} type="button" onClick={() => toggle('interested_in', i)} style={chipStyle(form.interested_in.includes(i))}>{i}</button>
         ))}
       </div>
-
       <label style={labelStyle}>{t.products}</label>
       <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
         {['Phone mount', 'Power bank', 'Emergency light', 'Raincoat', 'Helmet with communication', 'Cable lock', 'Seat cushion', 'Handlebar charger'].map(p => (
           <button key={p} type="button" onClick={() => toggle('product_interests', p)} style={chipStyle(form.product_interests.includes(p))}>{p}</button>
         ))}
       </div>
-
       <label style={labelStyle}>{t.referral}</label>
       <input style={inputStyle} value={form.referred_by} onChange={e => set('referred_by', e.target.value)} placeholder="e.g. RW-1234" />
-
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginTop: '24px', padding: '16px', background: '#0f172a', borderRadius: '12px' }}>
         <input type="checkbox" checked={form.consent} onChange={e => set('consent', e.target.checked)}
           style={{ width: '20px', height: '20px', marginTop: '2px', cursor: 'pointer', accentColor: '#f97316' }} />
@@ -366,6 +382,9 @@ export default function RegistrationForm() {
         <div style={{ fontSize: '40px', marginBottom: '8px' }}>🏍️</div>
         <h1 style={{ fontSize: '26px', fontWeight: '700', background: 'linear-gradient(90deg, #f97316, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.title}</h1>
         <p style={{ color: '#64748b', fontSize: '14px', marginTop: '6px' }}>{t.subtitle}</p>
+        {locationStatus === 'bangalore' && (
+          <p style={{ color: '#10b981', fontSize: '12px', marginTop: '6px' }}>📍 Bangalore Rider Detected!</p>
+        )}
       </div>
 
       <div style={{ background: '#1e293b', borderRadius: '8px', height: '8px', marginBottom: '8px' }}>
