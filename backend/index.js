@@ -98,19 +98,19 @@ async function sendTelegram(name, phone, referralCode, segment) {
   const TELEGRAM_TOKEN = '8671849823:AAFZgy4Pj_gu1kSbwAHvduD86KbtombgeEs';
   const CHAT_ID = '6841636854';
   
-  const message = `🏍️ *New Road Warrior Registered!*\n\n👤 Name: ${name}\n📱 Phone: ${phone}\n🎟️ Referral Code: ${referralCode}\n🏷️ Segment: ${segment}\n\n✅ Registered successfully!`;
+  const message = `🏍️ New Road Warrior Registered!\n\n👤 Name: ${name}\n📱 Phone: ${phone}\n🎟️ Referral Code: ${referralCode}\n🏷️ Segment: ${segment}\n\n✅ Registered successfully!`;
   
   try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: CHAT_ID,
-        text: message,
-        parse_mode: 'Markdown'
+        text: message
       })
     });
-    console.log('Telegram sent!');
+    const result = await res.json();
+    console.log('Telegram result:', JSON.stringify(result));
   } catch (e) {
     console.log('Telegram failed:', e.message);
   }

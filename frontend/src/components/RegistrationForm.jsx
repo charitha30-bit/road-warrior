@@ -232,9 +232,10 @@ export default function RegistrationForm() {
           />
         </div>
         <p style={{ color: '#64748b', fontSize: '13px', marginTop: '16px' }}>Share your code with other riders to earn more points!</p>
-        <a href="/score" style={{ display: 'block', marginTop: '12px', color: '#f97316', fontSize: '14px', textDecoration: 'none', fontWeight: '600' }}>
-          Check Your Score →
-        </a>
+        <a href="https://t.me/rw2026ev_bot" target="_blank"
+  style={{ display: 'block', marginTop: '16px', padding: '12px 24px', borderRadius: '10px', background: '#0088cc', color: '#fff', textDecoration: 'none', fontWeight: '600', fontSize: '14px', textAlign: 'center' }}>
+  📱 Join Our Telegram Community →
+</a>
       </div>
     </div>
   )
