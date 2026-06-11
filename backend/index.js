@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');          // ← NEW: npm install jsonwebtoken
 require('dotenv').config({ path: __dirname + '/.env' });
 
 const app = express();
@@ -8,11 +9,15 @@ app.use(cors());
 app.use(express.json());
 app.set('trust proxy', 1);
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
-const FAST2SMS_KEY = 'uy7XI4TlQSGcHvjp2BWieJ0AzC31DdsktNELMbU9PKwF8nZROrkobKRL7OfYMVDcZIxm1i3BGuJHpdzr';
-const TELEGRAM_TOKEN = '8671849823:AAFZgy4Pj_gu1kSbwAHvduD86KbtombgeEs';
-const ADMIN_CHAT_ID = '6841636854';
+// ─── CONSTANTS (move these to .env) ──────────────────────────────────────────
+const SUPABASE_URL     = process.env.SUPABASE_URL;
+const SUPABASE_KEY     = process.env.SUPABASE_ANON_KEY;
+const FAST2SMS_KEY     = process.env.FAST2SMS_KEY;          // ← move to .env
+const TELEGRAM_TOKEN   = process.env.TELEGRAM_TOKEN;        // ← move to .env
+const ADMIN_CHAT_ID    = process.env.ADMIN_CHAT_ID;         // ← move to .env
+const WHATSAPP_TOKEN   = process.env.WHATSAPP_TOKEN;        // ← move to .env
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;  // ← NEW
+const JWT_SECRET       = process.env.JWT_SECRET;            // ← NEW
 
 const headers = {
   'Content-Type': 'application/json',
@@ -20,6 +25,7 @@ const headers = {
   'Authorization': `Bearer ${SUPABASE_KEY}`
 };
 
+// ─── RATE LIMITERS ────────────────────────────────────────────────────────────
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,
@@ -33,6 +39,7 @@ const adminLimiter = rateLimit({
   message: { error: 'Too many login attempts. Try again in 15 minutes.' }
 });
 
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 function generateReferralCode() {
   return 'RW-' + Math.floor(1000 + Math.random() * 9000);
 }
@@ -50,6 +57,22 @@ function validatePhone(phone) {
   return /^[6-9]\d{9}$/.test(phone.replace(/^91/, '').replace(/\D/g, ''));
 }
 
+// ─── NEW: reCAPTCHA v3 verification ───────────────────────────────────────────
+async function verifyRecaptcha(token) {
+  try {
+    const res = await fetch(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${RECAPTCHA_SECRET}&response=${token}`,
+      { method: 'POST' }
+    );
+    const data = await res.json();
+    return data.success && data.score >= 0.5;
+  } catch (e) {
+    console.log('reCAPTCHA check failed:', e.message);
+    return false;
+  }
+}
+
+// ─── SMS ──────────────────────────────────────────────────────────────────────
 async function sendSMS(phone, name, referralCode) {
   const cleanPhone = phone.replace(/\D/g, '').slice(-10);
   const message = `Welcome ${name}! You are now a Road Warrior! Your referral code is ${referralCode}. Share with riders to earn points!`;
@@ -64,85 +87,30 @@ async function sendSMS(phone, name, referralCode) {
     console.log('SMS failed:', e.message);
   }
 }
-// Generate and send OTP
-app.post('/api/send-otp', async (req, res) => {
-  const { phone } = req.body;
-  if (!validatePhone(phone)) {
-    return res.status(400).json({ error: 'Invalid phone number' });
-  }
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  try {
-    // Store OTP in Supabase
-    await fetch(`${SUPABASE_URL}/rest/v1/otp_verifications`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ phone, otp, verified: false })
-    });
-    // Send via Fast2SMS
-    const message = `Your Road Warrior OTP is ${otp}. Valid for 5 minutes.`;
-    const smsRes = await fetch(
-      `https://www.fast2sms.com/dev/bulkV2?authorization=${FAST2SMS_KEY}&route=q&message=${encodeURIComponent(message)}&language=english&flash=0&numbers=${phone}`,
-      { method: 'GET', headers: { 'cache-control': 'no-cache' } }
-    );
-    const smsResult = await smsRes.json();
-    console.log('OTP SMS:', JSON.stringify(smsResult));
-    res.json({ success: true, message: 'OTP sent!' });
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to send OTP' });
-  }
-});
 
-// Verify OTP
-app.post('/api/verify-otp', async (req, res) => {
-  const { phone, otp } = req.body;
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/otp_verifications?phone=eq.${phone}&otp=eq.${otp}&verified=eq.false&order=created_at.desc&limit=1`,
-      { headers }
-    );
-    const data = await response.json();
-    if (!data.length) {
-      return res.status(400).json({ error: 'Invalid or expired OTP' });
-    }
-    // Check if OTP is within 5 minutes
-    const createdAt = new Date(data[0].created_at);
-    const now = new Date();
-    const diff = (now - createdAt) / 1000 / 60;
-    if (diff > 5) {
-      return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
-    }
-    // Mark as verified
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/otp_verifications?id=eq.${data[0].id}`,
-      { method: 'PATCH', headers, body: JSON.stringify({ verified: true }) }
-    );
-    res.json({ success: true, message: 'Phone verified!' });
-  } catch (e) {
-    res.status(500).json({ error: 'Verification failed' });
-  }
-});
+// ─── WHATSAPP ─────────────────────────────────────────────────────────────────
 async function sendWhatsApp(phone, name, referralCode) {
-  const token = 'EAAOY6dYoVvgBRpoWM5SwUxhPlVoNmlybscTqNOZBMhB2hcs6v00GV2GZCN1unjiTWNGC5DEX0IJTTbsuif5eD2ZBgGWhvtm3mymcTkwpQZA5PZAxgvdZBIwBaZArhAZCnxn3IucmKMyczTnXHQNZBpAt9MkBrIgHo3nJJW6W5oM4KPFfvbXy90NEmMwQlZBQRhNZC9df13S4A9vs9hiDFYZAqSFfEf0Blsi4ZBTRiKSG4SlOl7fEEm9siWbZAAJNAUNmhBCA8GR7moBgPzusZAXY1aE4FMSnwZDZD'
-  const phoneNumberId = '1121568487708918'
-  const formattedPhone = `91${phone.replace(/\D/g, '').slice(-10)}`
+  const phoneNumberId = '1121568487708918';
+  const formattedPhone = `91${phone.replace(/\D/g, '').slice(-10)}`;
   try {
     const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to: formattedPhone,
         type: 'template',
         template: { name: 'hello_world', language: { code: 'en_US' } }
       })
-    })
-    const result = await response.json()
-    console.log('WhatsApp response:', JSON.stringify(result))
+    });
+    const result = await response.json();
+    console.log('WhatsApp response:', JSON.stringify(result));
   } catch (e) {
-    console.log('WhatsApp failed:', e.message)
+    console.log('WhatsApp failed:', e.message);
   }
 }
 
+// ─── TELEGRAM ─────────────────────────────────────────────────────────────────
 async function sendTelegramMessage(chatId, text) {
   try {
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
@@ -162,11 +130,85 @@ async function sendTelegram(name, phone, referralCode, segment) {
   await sendTelegramMessage(ADMIN_CHAT_ID, message);
 }
 
-// Register rider
+// ─── SEND OTP ─────────────────────────────────────────────────────────────────
+app.post('/api/send-otp', async (req, res) => {
+  const { phone } = req.body;
+  if (!validatePhone(phone)) {
+    return res.status(400).json({ error: 'Invalid phone number' });
+  }
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/otp_verifications`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ phone, otp, verified: false })
+    });
+    const message = `Your Road Warrior OTP is ${otp}. Valid for 5 minutes.`;
+    const smsRes = await fetch(
+      `https://www.fast2sms.com/dev/bulkV2?authorization=${FAST2SMS_KEY}&route=q&message=${encodeURIComponent(message)}&language=english&flash=0&numbers=${phone}`,
+      { method: 'GET', headers: { 'cache-control': 'no-cache' } }
+    );
+    const smsResult = await smsRes.json();
+    console.log('OTP SMS:', JSON.stringify(smsResult));
+    res.json({ success: true, message: 'OTP sent!' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+});
+
+// ─── VERIFY OTP ───────────────────────────────────────────────────────────────
+app.post('/api/verify-otp', async (req, res) => {
+  const { phone, otp } = req.body;
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/otp_verifications?phone=eq.${phone}&otp=eq.${otp}&verified=eq.false&order=created_at.desc&limit=1`,
+      { headers }
+    );
+    const data = await response.json();
+    if (!data.length) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+    const createdAt = new Date(data[0].created_at);
+    const diff = (Date.now() - createdAt) / 1000 / 60;
+    if (diff > 5) {
+      return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
+    }
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/otp_verifications?id=eq.${data[0].id}`,
+      { method: 'PATCH', headers, body: JSON.stringify({ verified: true }) }
+    );
+    res.json({ success: true, message: 'Phone verified!' });
+  } catch (e) {
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// ─── REGISTER ─────────────────────────────────────────────────────────────────
 app.post('/api/register', registerLimiter, async (req, res) => {
   try {
     const data = req.body;
 
+    // STEP 1: verify reCAPTCHA token
+    const captchaOk = await verifyRecaptcha(data.recaptchaToken);
+    if (!captchaOk) {
+      return res.status(400).json({ success: false, error: 'recaptcha_failed', message: 'Bot check failed. Please try again.' });
+    }
+
+    // STEP 2: confirm OTP was verified for this phone (within last 30 min)
+    const otpCheck = await fetch(
+      `${SUPABASE_URL}/rest/v1/otp_verifications?phone=eq.${data.whatsapp}&verified=eq.true&order=created_at.desc&limit=1`,
+      { headers }
+    );
+    const otpRows = await otpCheck.json();
+    if (!otpRows.length) {
+      return res.status(400).json({ success: false, error: 'otp_not_verified', message: 'Please verify your phone number first.' });
+    }
+    const verifiedAt = new Date(otpRows[0].created_at);
+    if ((Date.now() - verifiedAt) / 1000 / 60 > 30) {
+      return res.status(400).json({ success: false, error: 'otp_expired', message: 'OTP session expired. Please verify again.' });
+    }
+
+    // STEP 3: phone validation
     if (!validatePhone(data.whatsapp)) {
       return res.status(400).json({ success: false, error: 'invalid_phone', message: 'Please enter a valid Indian mobile number' });
     }
@@ -174,6 +216,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     const referralCode = generateReferralCode();
     const segment = getSegment(data);
 
+    // STEP 4: duplicate check
     const dupCheck = await fetch(
       `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${data.whatsapp}&select=id`,
       { headers }
@@ -183,6 +226,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: 'duplicate', message: 'This WhatsApp number is already registered!' });
     }
 
+    // STEP 5: insert rider
     const response = await fetch(`${SUPABASE_URL}/rest/v1/riders`, {
       method: 'POST',
       headers,
@@ -216,6 +260,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       throw new Error(JSON.stringify(err));
     }
 
+    // STEP 6: referral points
     if (data.referred_by) {
       const refCheck = await fetch(
         `${SUPABASE_URL}/rest/v1/riders?referral_code=eq.${data.referred_by}&select=id,points,name,whatsapp`,
@@ -260,14 +305,92 @@ app.post('/api/register', registerLimiter, async (req, res) => {
   }
 });
 
-// Telegram webhook for rider messages
+// ─── ADMIN LOGIN ──────────────────────────────────────────────────────────────
+const loginAttempts = {};
+app.post('/api/admin/login', adminLimiter, (req, res) => {
+  const { password } = req.body;
+  const ip = req.ip;
+
+  if (!loginAttempts[ip]) loginAttempts[ip] = { count: 0, lockedUntil: null };
+  if (loginAttempts[ip].lockedUntil && Date.now() < loginAttempts[ip].lockedUntil) {
+    return res.status(429).json({ error: 'Too many attempts. Try again in 15 minutes.' });
+  }
+
+  if (password === process.env.ADMIN_PASSWORD) {   // ← use env var, not hardcoded
+    loginAttempts[ip] = { count: 0, lockedUntil: null };
+    // Real JWT with 30-min expiry → auto-logout for free
+    const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '30m' });
+    res.json({ success: true, token });
+  } else {
+    loginAttempts[ip].count++;
+    if (loginAttempts[ip].count >= 5) {
+      loginAttempts[ip].lockedUntil = Date.now() + 15 * 60 * 1000;
+      return res.status(429).json({ error: 'Account locked for 15 minutes.' });
+    }
+    res.status(401).json({ success: false, error: 'Wrong password', attemptsLeft: 5 - loginAttempts[ip].count });
+  }
+});
+
+// ─── VERIFY ADMIN MIDDLEWARE ──────────────────────────────────────────────────
+function verifyAdmin(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return res.status(401).json({ error: 'No token' });
+  try {
+    jwt.verify(authHeader.replace('Bearer ', ''), JWT_SECRET);
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'Invalid or expired session. Please log in again.' });
+  }
+}
+
+// ─── PROTECTED ROUTES ─────────────────────────────────────────────────────────
+app.get('/api/riders', verifyAdmin, async (req, res) => {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/riders?select=*&order=points.desc`,
+      { headers }
+    );
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/riders', verifyAdmin, async (req, res) => {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/riders?select=*&order=points.desc`,
+      { headers }
+    );
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── PUBLIC ROUTES ────────────────────────────────────────────────────────────
+app.get('/api/score/:phone', async (req, res) => {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${req.params.phone}&select=*`,
+      { headers }
+    );
+    const data = await response.json();
+    if (!data.length) throw new Error('Not found');
+    res.json(data[0]);
+  } catch (err) {
+    res.status(404).json({ error: 'Rider not found' });
+  }
+});
+
 app.post('/api/telegram/webhook', async (req, res) => {
   const { message } = req.body;
   if (!message) return res.sendStatus(200);
 
   const chatId = message.chat.id;
   const text = message.text || '';
-
   let reply = '';
 
   if (text === '/start') {
@@ -296,79 +419,6 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
   await sendTelegramMessage(chatId, reply);
   res.sendStatus(200);
-});
-
-// Get all riders
-app.get('/api/riders', verifyAdmin, async (req, res) => {
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/riders?select=*&order=points.desc`,
-      { headers }
-    );
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get rider score
-app.get('/api/score/:phone', async (req, res) => {
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/riders?whatsapp=eq.${req.params.phone}&select=*`,
-      { headers }
-    );
-    const data = await response.json();
-    if (!data.length) throw new Error('Not found');
-    res.json(data[0]);
-  } catch (err) {
-    res.status(404).json({ error: 'Rider not found' });
-  }
-});
-
-const loginAttempts = {};
-app.post('/api/admin/login', adminLimiter, (req, res) => {
-  const { password } = req.body;
-  const ip = req.ip;
-
-  if (!loginAttempts[ip]) loginAttempts[ip] = { count: 0, lockedUntil: null };
-
-  if (loginAttempts[ip].lockedUntil && Date.now() < loginAttempts[ip].lockedUntil) {
-    return res.status(429).json({ error: 'Too many attempts. Try again in 15 minutes.' });
-  }
-
-  if (password === 'BharatRiders@2025') {
-    loginAttempts[ip] = { count: 0, lockedUntil: null };
-    const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
-    res.json({ success: true, token });
-  } else {
-    loginAttempts[ip].count++;
-    if (loginAttempts[ip].count >= 5) {
-      loginAttempts[ip].lockedUntil = Date.now() + 15 * 60 * 1000;
-      return res.status(429).json({ error: 'Account locked for 15 minutes due to too many failed attempts.' });
-    }
-    res.status(401).json({ success: false, error: 'Wrong password', attemptsLeft: 5 - loginAttempts[ip].count });
-  }
-});
-
-function verifyAdmin(req, res, next) {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(401).json({ error: 'No token' });
-  next();
-}
-
-app.get('/api/admin/riders', verifyAdmin, async (req, res) => {
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/riders?select=*&order=points.desc`,
-      { headers }
-    );
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 });
 
 app.listen(process.env.PORT || 5000, () => {

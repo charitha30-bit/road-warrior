@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 
 const API = 'https://road-warrior-backend.onrender.com'
+const RECAPTCHA_SITE_KEY = '6LfsuRktAAAAAFAHfUriEqrMUmOvAKrofjtuQHol'
 
 const translations = {
   en: {
@@ -58,11 +59,33 @@ const translations = {
 }
 
 const chipStyle = (active, color = '#f97316') => ({
-  padding: '10px 16px', borderRadius: '24px', border: '2px solid',
+  padding: '12px 18px', borderRadius: '24px', border: '2px solid',
   borderColor: active ? color : '#334155',
   background: active ? color : 'transparent',
-  color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: active ? '600' : '400'
+  color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: active ? '600' : '400',
+  transition: 'all 0.2s'
 })
+
+// Load reCAPTCHA script
+function loadRecaptcha() {
+  return new Promise((resolve) => {
+    if (window.grecaptcha) { resolve(); return; }
+    const script = document.createElement('script')
+    script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`
+    script.onload = resolve
+    document.head.appendChild(script)
+  })
+}
+
+async function getRecaptchaToken(action) {
+  await loadRecaptcha()
+  return new Promise((resolve) => {
+    window.grecaptcha.ready(async () => {
+      const token = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action })
+      resolve(token)
+    })
+  })
+}
 
 export default function RegistrationForm() {
   const [lang, setLang] = useState('en')
@@ -82,6 +105,11 @@ export default function RegistrationForm() {
   const urlParams = new URLSearchParams(window.location.search)
   const refFromURL = urlParams.get('ref') || ''
 
+  // Preload reCAPTCHA on mount
+  useEffect(() => {
+    loadRecaptcha()
+  }, [])
+
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -90,11 +118,7 @@ export default function RegistrationForm() {
           const inBangalore =
             latitude >= 12.7 && latitude <= 13.2 &&
             longitude >= 77.4 && longitude <= 77.8
-          if (inBangalore) {
-            setLocationStatus('bangalore')
-          } else {
-            setLocationStatus('allowed')
-          }
+          setLocationStatus(inBangalore ? 'bangalore' : 'allowed')
         },
         () => setLocationStatus('allowed')
       )
@@ -151,7 +175,13 @@ export default function RegistrationForm() {
     if (!validate()) return
     setLoading(true)
     try {
-      const res = await axios.post(`${API}/api/register`, form)
+      // Get reCAPTCHA token before submitting
+      const recaptchaToken = await getRecaptchaToken('register')
+
+      const res = await axios.post(`${API}/api/register`, {
+        ...form,
+        recaptchaToken
+      })
       setResult(res.data)
       setSubmitted(true)
     } catch (e) {
@@ -159,6 +189,8 @@ export default function RegistrationForm() {
         alert('This WhatsApp number is already registered! Visit /score to check your points.')
       } else if (e.response?.data?.error === 'invalid_phone') {
         alert('Please enter a valid Indian mobile number')
+      } else if (e.response?.data?.error === 'recaptcha_failed') {
+        alert('Security check failed. Please refresh the page and try again.')
       } else {
         alert('Something went wrong. Please try again.')
       }
@@ -208,10 +240,11 @@ export default function RegistrationForm() {
   }
   const labelStyle = { fontSize: '14px', color: '#94a3b8', display: 'block', marginTop: '20px', fontWeight: '500' }
   const btnStyle = (primary) => ({
-    padding: '14px 32px', borderRadius: '12px', border: 'none',
+    padding: '16px 36px', borderRadius: '12px', border: 'none',
     background: primary ? 'linear-gradient(135deg, #f97316, #ea580c)' : '#1e293b',
     color: '#fff', fontSize: '16px', cursor: 'pointer', fontWeight: '700',
-    boxShadow: primary ? '0 4px 15px rgba(249,115,22,0.4)' : 'none'
+    boxShadow: primary ? '0 4px 15px rgba(249,115,22,0.4)' : 'none',
+    minWidth: primary ? '160px' : 'auto'
   })
 
   const isEV = form.vehicle_type === 'Electric two-wheeler'
@@ -298,8 +331,8 @@ export default function RegistrationForm() {
         style={inputStyle}
         value={form.whatsapp}
         onChange={e => {
-  set('whatsapp', e.target.value.replace(/\D/g, '').slice(0, 10))
-}}
+          set('whatsapp', e.target.value.replace(/\D/g, '').slice(0, 10))
+        }}
         placeholder="10-digit mobile number"
         maxLength={10}
       />
@@ -469,6 +502,11 @@ export default function RegistrationForm() {
           style={{ width: '20px', height: '20px', marginTop: '2px', cursor: 'pointer', accentColor: '#f97316' }} />
         <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>{t.consent} *</p>
       </div>
+
+      {/* reCAPTCHA badge note */}
+      <p style={{ color: '#475569', fontSize: '11px', marginTop: '16px', textAlign: 'center' }}>
+        Protected by reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" style={{ color: '#475569' }}>Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" style={{ color: '#475569' }}>Terms</a>
+      </p>
     </div>
   ]
 
@@ -494,9 +532,24 @@ export default function RegistrationForm() {
         )}
       </div>
 
+      {/* Progress bar */}
       <div style={{ background: '#1e293b', borderRadius: '8px', height: '8px', marginBottom: '8px' }}>
         <div style={{ background: 'linear-gradient(90deg, #f97316, #10b981)', height: '100%', borderRadius: '8px', width: `${((step + 1) / 6) * 100}%`, transition: 'width 0.3s' }} />
       </div>
+
+      {/* Step dots */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+        {t.sections.map((s, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+            <div style={{
+              width: '10px', height: '10px', borderRadius: '50%',
+              background: i <= step ? '#f97316' : '#334155',
+              transition: 'background 0.3s'
+            }} />
+          </div>
+        ))}
+      </div>
+
       <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '20px' }}>
         {t.sections[step]} — {step + 1} of 6
       </p>
