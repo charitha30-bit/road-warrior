@@ -74,7 +74,7 @@ export default function RegistrationForm() {
   const [locationStatus, setLocationStatus] = useState('checking')
   const [otpSent, setOtpSent] = useState(false)
   const [otp, setOtp] = useState('')
-  const [otpVerified, setOtpVerified] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(true)
   const [otpLoading, setOtpLoading] = useState(false)
   const [otpError, setOtpError] = useState('')
   const t = translations[lang]
