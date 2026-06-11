@@ -72,6 +72,11 @@ export default function RegistrationForm() {
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [locationStatus, setLocationStatus] = useState('checking')
+  const [otpSent, setOtpSent] = useState(false)
+const [otp, setOtp] = useState('')
+const [otpVerified, setOtpVerified] = useState(false)
+const [otpLoading, setOtpLoading] = useState(false)
+const [otpError, setOtpError] = useState('')
   const t = translations[lang]
 
   const urlParams = new URLSearchParams(window.location.search)
@@ -106,7 +111,7 @@ export default function RegistrationForm() {
     challenges: [], switch_reasons: [], open_to_ev: 'Yes',
     accident_insurance: 'Yes', health_insurance: 'Yes',
     paid_out_of_pocket: 'No', interested_in: [],
-    product_interests: [], referred_by: refFromURL, consent: false
+    product_interests: [], referred_by: refFromURL, consent: false, honeypot: '',
   })
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -125,6 +130,7 @@ export default function RegistrationForm() {
       if (!form.name.trim()) { alert('Please enter your name'); return false }
       if (!form.whatsapp.trim()) { alert('Please enter your WhatsApp number'); return false }
       if (!/^[6-9]\d{9}$/.test(form.whatsapp)) { alert('Please enter a valid 10-digit Indian mobile number'); return false }
+      if (!otpVerified) { alert('Please verify your WhatsApp number with OTP first'); return false }
       if (!form.city.trim()) { alert('Please enter your city'); return false }
       if (!form.pin_code.trim()) { alert('Please enter your PIN code'); return false }
       if (form.platform.length === 0) { alert('Please select at least one platform'); return false }
@@ -138,7 +144,7 @@ export default function RegistrationForm() {
     }
     return true
   }
-
+  if (form.honeypot) return
   const handleSubmit = async () => {
     if (!validate()) return
     setLoading(true)

@@ -64,7 +64,63 @@ async function sendSMS(phone, name, referralCode) {
     console.log('SMS failed:', e.message);
   }
 }
+// Generate and send OTP
+app.post('/api/send-otp', async (req, res) => {
+  const { phone } = req.body;
+  if (!validatePhone(phone)) {
+    return res.status(400).json({ error: 'Invalid phone number' });
+  }
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  try {
+    // Store OTP in Supabase
+    await fetch(`${SUPABASE_URL}/rest/v1/otp_verifications`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ phone, otp, verified: false })
+    });
+    // Send via Fast2SMS
+    const message = `Your Road Warrior OTP is ${otp}. Valid for 5 minutes.`;
+    const smsRes = await fetch(
+      `https://www.fast2sms.com/dev/bulkV2?authorization=${FAST2SMS_KEY}&route=q&message=${encodeURIComponent(message)}&language=english&flash=0&numbers=${phone}`,
+      { method: 'GET', headers: { 'cache-control': 'no-cache' } }
+    );
+    const smsResult = await smsRes.json();
+    console.log('OTP SMS:', JSON.stringify(smsResult));
+    res.json({ success: true, message: 'OTP sent!' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+});
 
+// Verify OTP
+app.post('/api/verify-otp', async (req, res) => {
+  const { phone, otp } = req.body;
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/otp_verifications?phone=eq.${phone}&otp=eq.${otp}&verified=eq.false&order=created_at.desc&limit=1`,
+      { headers }
+    );
+    const data = await response.json();
+    if (!data.length) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+    // Check if OTP is within 5 minutes
+    const createdAt = new Date(data[0].created_at);
+    const now = new Date();
+    const diff = (now - createdAt) / 1000 / 60;
+    if (diff > 5) {
+      return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
+    }
+    // Mark as verified
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/otp_verifications?id=eq.${data[0].id}`,
+      { method: 'PATCH', headers, body: JSON.stringify({ verified: true }) }
+    );
+    res.json({ success: true, message: 'Phone verified!' });
+  } catch (e) {
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
 async function sendWhatsApp(phone, name, referralCode) {
   const token = 'EAAOY6dYoVvgBRpoWM5SwUxhPlVoNmlybscTqNOZBMhB2hcs6v00GV2GZCN1unjiTWNGC5DEX0IJTTbsuif5eD2ZBgGWhvtm3mymcTkwpQZA5PZAxgvdZBIwBaZArhAZCnxn3IucmKMyczTnXHQNZBpAt9MkBrIgHo3nJJW6W5oM4KPFfvbXy90NEmMwQlZBQRhNZC9df13S4A9vs9hiDFYZAqSFfEf0Blsi4ZBTRiKSG4SlOl7fEEm9siWbZAAJNAUNmhBCA8GR7moBgPzusZAXY1aE4FMSnwZDZD'
   const phoneNumberId = '1121568487708918'
