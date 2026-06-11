@@ -107,8 +107,13 @@ export default function Admin() {
     <div style={{ minHeight: '100vh', padding: '20px', maxWidth: '900px', margin: '0 auto', background: '#0f172a' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-  <button onClick={() => {
+<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+  <div>
+    <div style={{ fontSize: '28px', marginBottom: '4px' }}>🏍️</div>
+    <h1 style={{ background: 'linear-gradient(90deg, #f97316, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '24px', margin: 0 }}>Admin Dashboard</h1>
+    <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>Road Warrior EV Challenge</p>
+  </div>
+  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>  <button onClick={() => {
     const headers = ['Name','Phone','City','PIN','Platform','Vehicle','Segment','Points','Referral Code','Created']
     const rows = filtered.map(r => [
       r.name, r.whatsapp, r.city, r.pin_code, r.platform,
@@ -133,7 +138,7 @@ export default function Admin() {
 </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '28px', marginTop: '28px' }}>
         {[
           { label: 'Total Riders', value: riders.length, color: '#f97316' },
           { label: 'EV Sale Leads', value: riders.filter(r => r.segment === 'EV_SALE_LEAD').length, color: '#10b981' },
