@@ -66,23 +66,19 @@ const chipStyle = (active, color = '#f97316') => ({
   transition: 'all 0.2s'
 })
 
-// Load reCAPTCHA script
-function loadRecaptcha() {
-  return new Promise((resolve) => {
-    if (window.grecaptcha) { resolve(); return; }
-    const script = document.createElement('script')
-    script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`
-    script.onload = resolve
-    document.head.appendChild(script)
-  })
-}
 
 async function getRecaptchaToken(action) {
-  await loadRecaptcha()
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     window.grecaptcha.ready(async () => {
-      const token = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action })
-      resolve(token)
+      try {
+        const token = await window.grecaptcha.execute(
+          '6LfsuRktAAAAAFAHfUriEqrMUmOvAKrofjtuQHol',
+          { action }
+        )
+        resolve(token)
+      } catch (e) {
+        reject(e)
+      }
     })
   })
 }
@@ -105,10 +101,6 @@ export default function RegistrationForm() {
   const urlParams = new URLSearchParams(window.location.search)
   const refFromURL = urlParams.get('ref') || ''
 
-  // Preload reCAPTCHA on mount
-  useEffect(() => {
-    loadRecaptcha()
-  }, [])
 
   useEffect(() => {
     if (navigator.geolocation) {
