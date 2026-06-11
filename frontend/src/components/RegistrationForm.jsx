@@ -298,12 +298,8 @@ export default function RegistrationForm() {
         style={inputStyle}
         value={form.whatsapp}
         onChange={e => {
-          set('whatsapp', e.target.value.replace(/\D/g, '').slice(0, 10))
-          setOtpVerified(false)
-          setOtpSent(false)
-          setOtp('')
-          setOtpError('')
-        }}
+  set('whatsapp', e.target.value.replace(/\D/g, '').slice(0, 10))
+}}
         placeholder="10-digit mobile number"
         maxLength={10}
       />
