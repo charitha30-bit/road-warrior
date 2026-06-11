@@ -73,10 +73,10 @@ export default function RegistrationForm() {
   const [copied, setCopied] = useState(false)
   const [locationStatus, setLocationStatus] = useState('checking')
   const [otpSent, setOtpSent] = useState(false)
-const [otp, setOtp] = useState('')
-const [otpVerified, setOtpVerified] = useState(false)
-const [otpLoading, setOtpLoading] = useState(false)
-const [otpError, setOtpError] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpVerified, setOtpVerified] = useState(false)
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [otpError, setOtpError] = useState('')
   const t = translations[lang]
 
   const urlParams = new URLSearchParams(window.location.search)
@@ -134,14 +134,6 @@ const [otpError, setOtpError] = useState('')
       if (!form.city.trim()) { alert('Please enter your city'); return false }
       if (!form.pin_code.trim()) { alert('Please enter your PIN code'); return false }
       if (form.platform.length === 0) { alert('Please select at least one platform'); return false }
-      <input
-  type="text"
-  value={form.honeypot}
-  onChange={e => set('honeypot', e.target.value)}
-  style={{ display: 'none' }}
-  tabIndex="-1"
-  autoComplete="off"
-/>
     }
     if (step === 2) {
       if (!form.weekly_fuel) { alert('Please enter your weekly fuel cost'); return false }
@@ -152,7 +144,9 @@ const [otpError, setOtpError] = useState('')
     }
     return true
   }
-  if (form.honeypot) return
+
+  if (form.honeypot) return null
+
   const handleSubmit = async () => {
     if (!validate()) return
     setLoading(true)
@@ -170,6 +164,34 @@ const [otpError, setOtpError] = useState('')
       }
     }
     setLoading(false)
+  }
+
+  const handleSendOtp = async () => {
+    if (!/^[6-9]\d{9}$/.test(form.whatsapp)) {
+      alert('Enter a valid 10-digit number first')
+      return
+    }
+    setOtpLoading(true)
+    setOtpError('')
+    try {
+      await axios.post(`${API}/api/send-otp`, { phone: form.whatsapp })
+      setOtpSent(true)
+    } catch (e) {
+      setOtpError('Failed to send OTP. Try again.')
+    }
+    setOtpLoading(false)
+  }
+
+  const handleVerifyOtp = async () => {
+    setOtpLoading(true)
+    setOtpError('')
+    try {
+      await axios.post(`${API}/api/verify-otp`, { phone: form.whatsapp, otp })
+      setOtpVerified(true)
+    } catch (e) {
+      setOtpError(e.response?.data?.error || 'Invalid OTP. Try again.')
+    }
+    setOtpLoading(false)
   }
 
   const copyCode = () => {
@@ -194,7 +216,6 @@ const [otpError, setOtpError] = useState('')
 
   const isEV = form.vehicle_type === 'Electric two-wheeler'
 
-  // Location checking screen
   if (locationStatus === 'checking') return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a' }}>
       <div style={{ textAlign: 'center' }}>
@@ -246,29 +267,98 @@ const [otpError, setOtpError] = useState('')
           />
         </div>
         <p style={{ color: '#64748b', fontSize: '13px', marginTop: '16px' }}>Share your code with other riders to earn more points!</p>
-
-<a href="https://t.me/rw2026ev_bot" target="_blank"
-  style={{ display: 'block', marginTop: '16px', padding: '12px 24px', borderRadius: '10px', background: '#0088cc', color: '#fff', textDecoration: 'none', fontWeight: '600', fontSize: '14px', textAlign: 'center' }}>
-  📱 Join Our Telegram Community →
-</a>
-
-<a href="/score" style={{ display: 'block', marginTop: '12px', color: '#f97316', fontSize: '14px', textDecoration: 'none', fontWeight: '600', textAlign: 'center' }}>
-  Check Your Score →
-</a>
+        <a href="https://t.me/rw2026ev_bot" target="_blank"
+          style={{ display: 'block', marginTop: '16px', padding: '12px 24px', borderRadius: '10px', background: '#0088cc', color: '#fff', textDecoration: 'none', fontWeight: '600', fontSize: '14px', textAlign: 'center' }}>
+          📱 Join Our Telegram Community →
+        </a>
+        <a href="/score" style={{ display: 'block', marginTop: '12px', color: '#f97316', fontSize: '14px', textDecoration: 'none', fontWeight: '600', textAlign: 'center' }}>
+          Check Your Score →
+        </a>
       </div>
     </div>
   )
 
   const steps = [
     <div key={0}>
+      {/* Honeypot - hidden from real users */}
+      <input
+        type="text"
+        value={form.honeypot}
+        onChange={e => set('honeypot', e.target.value)}
+        style={{ display: 'none' }}
+        tabIndex="-1"
+        autoComplete="off"
+      />
+
       <label style={labelStyle}>{t.name} *</label>
       <input style={inputStyle} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Enter your full name" />
+
       <label style={labelStyle}>{t.whatsapp} *</label>
-      <input style={inputStyle} value={form.whatsapp} onChange={e => set('whatsapp', e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10-digit mobile number" maxLength={10} />
+      <input
+        style={inputStyle}
+        value={form.whatsapp}
+        onChange={e => {
+          set('whatsapp', e.target.value.replace(/\D/g, '').slice(0, 10))
+          setOtpVerified(false)
+          setOtpSent(false)
+          setOtp('')
+          setOtpError('')
+        }}
+        placeholder="10-digit mobile number"
+        maxLength={10}
+      />
+
+      {/* OTP Section */}
+      {!otpVerified && (
+        <button
+          type="button"
+          onClick={handleSendOtp}
+          disabled={otpLoading}
+          style={{
+            marginTop: '10px', padding: '12px 20px', borderRadius: '8px',
+            border: 'none', background: '#0088cc', color: '#fff',
+            fontSize: '14px', fontWeight: '600', cursor: 'pointer', width: '100%'
+          }}
+        >
+          {otpLoading ? 'Sending...' : otpSent ? '🔄 Resend OTP' : '📱 Send OTP'}
+        </button>
+      )}
+
+      {otpSent && !otpVerified && (
+        <div style={{ marginTop: '10px' }}>
+          <input
+            style={inputStyle}
+            value={otp}
+            onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="Enter 6-digit OTP"
+            maxLength={6}
+          />
+          <button
+            type="button"
+            onClick={handleVerifyOtp}
+            disabled={otpLoading}
+            style={{
+              marginTop: '8px', padding: '12px 20px', borderRadius: '8px',
+              border: 'none', background: '#10b981', color: '#fff',
+              fontSize: '14px', fontWeight: '600', cursor: 'pointer', width: '100%'
+            }}
+          >
+            {otpLoading ? 'Verifying...' : '✓ Verify OTP'}
+          </button>
+          {otpError && <p style={{ color: '#ef4444', fontSize: '13px', marginTop: '6px' }}>{otpError}</p>}
+        </div>
+      )}
+
+      {otpVerified && (
+        <p style={{ color: '#10b981', fontSize: '13px', marginTop: '8px', fontWeight: '600' }}>✅ Phone Verified!</p>
+      )}
+
       <label style={labelStyle}>{t.city} *</label>
       <input style={inputStyle} value={form.city} onChange={e => set('city', e.target.value)} placeholder="Your city" />
+
       <label style={labelStyle}>{t.pincode} *</label>
       <input style={inputStyle} value={form.pin_code} onChange={e => set('pin_code', e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="6-digit PIN code" maxLength={6} />
+
       <label style={labelStyle}>{t.platform} *</label>
       <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
         {['Swiggy', 'Zomato', 'Blinkit', 'Zepto', 'Porter', 'Dunzo', 'Ola', 'Uber', 'Other'].map(p => (
@@ -278,6 +368,7 @@ const [otpError, setOtpError] = useState('')
       {form.platform.includes('Other') && (
         <input style={{ ...inputStyle, marginTop: '10px' }} placeholder="Please specify platform" onChange={e => set('platform_other', e.target.value)} />
       )}
+
       <label style={labelStyle}>{t.experience}</label>
       <select style={inputStyle} value={form.experience} onChange={e => set('experience', e.target.value)}>
         {['Less than 1 year', '1-2 years', '3-5 years', '5+ years'].map(x => <option key={x}>{x}</option>)}
