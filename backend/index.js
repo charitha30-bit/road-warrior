@@ -299,7 +299,7 @@ app.post('/api/telegram/webhook', async (req, res) => {
 });
 
 // Get all riders
-app.get('/api/riders', async (req, res) => {
+app.get('/api/riders', verifyAdmin, async (req, res) => {
   try {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/riders?select=*&order=points.desc`,

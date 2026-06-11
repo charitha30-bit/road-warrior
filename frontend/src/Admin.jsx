@@ -13,8 +13,17 @@ export default function Admin() {
   const [loginError, setLoginError] = useState('')
 
   useEffect(() => {
-    if (token) fetchRiders()
-  }, [token])
+  if (token) {
+    fetchRiders()
+    // Auto logout after 30 minutes
+    const timeout = setTimeout(() => {
+      localStorage.removeItem('adminToken')
+      setToken(null)
+      alert('Session expired. Please login again.')
+    }, 30 * 60 * 1000)
+    return () => clearTimeout(timeout)
+  }
+}, [token])
 
   const fetchRiders = async () => {
     setLoading(true)
@@ -108,6 +117,24 @@ export default function Admin() {
           style={{ padding: '10px 20px', borderRadius: '10px', border: '2px solid #334155', background: 'transparent', color: '#94a3b8', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
           Logout
         </button>
+        <button onClick={() => {
+  const headers = ['Name','Phone','City','PIN','Platform','Vehicle','Segment','Points','Referral Code','Created']
+  const rows = filtered.map(r => [
+    r.name, r.whatsapp, r.city, r.pin_code, r.platform,
+    r.vehicle_type, r.segment, r.points, r.referral_code,
+    new Date(r.created_at).toLocaleDateString()
+  ])
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `road-warrior-${filter}-${Date.now()}.csv`
+  a.click()
+}}
+style={{ padding: '10px 20px', borderRadius: '10px', border: '2px solid #10b981', background: 'transparent', color: '#10b981', cursor: 'pointer', fontSize: '13px', fontWeight: '600', marginRight: '8px' }}>
+  ⬇️ Download CSV
+</button>
       </div>
 
       {/* Stats */}

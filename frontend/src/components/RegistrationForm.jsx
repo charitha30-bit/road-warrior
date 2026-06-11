@@ -111,7 +111,7 @@ const [otpError, setOtpError] = useState('')
     challenges: [], switch_reasons: [], open_to_ev: 'Yes',
     accident_insurance: 'Yes', health_insurance: 'Yes',
     paid_out_of_pocket: 'No', interested_in: [],
-    product_interests: [], referred_by: refFromURL, consent: false, honeypot: '',
+    product_interests: [], referred_by: refFromURL, consent: false, honeypot: ''
   })
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -134,6 +134,14 @@ const [otpError, setOtpError] = useState('')
       if (!form.city.trim()) { alert('Please enter your city'); return false }
       if (!form.pin_code.trim()) { alert('Please enter your PIN code'); return false }
       if (form.platform.length === 0) { alert('Please select at least one platform'); return false }
+      <input
+  type="text"
+  value={form.honeypot}
+  onChange={e => set('honeypot', e.target.value)}
+  style={{ display: 'none' }}
+  tabIndex="-1"
+  autoComplete="off"
+/>
     }
     if (step === 2) {
       if (!form.weekly_fuel) { alert('Please enter your weekly fuel cost'); return false }
