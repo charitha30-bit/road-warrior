@@ -16,7 +16,7 @@ const FAST2SMS_KEY     = process.env.FAST2SMS_KEY;          // ← move to .env
 const TELEGRAM_TOKEN   = process.env.TELEGRAM_TOKEN;        // ← move to .env
 const ADMIN_CHAT_ID    = process.env.ADMIN_CHAT_ID;         // ← move to .env
 const WHATSAPP_TOKEN   = process.env.WHATSAPP_TOKEN;        // ← move to .env
-const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;  // ← NEW
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY  // ← NEW
 const JWT_SECRET       = process.env.JWT_SECRET;            // ← NEW
 
 const headers = {
