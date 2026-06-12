@@ -166,23 +166,16 @@ export default function RegistrationForm() {
   const handleSubmit = async () => {
     if (!validate()) return
     setLoading(true)
-    try {
-      // Get reCAPTCHA token before submitting
-      const recaptchaToken = await getRecaptchaToken('register')
-
-      const res = await axios.post(`${API}/api/register`, {
-        ...form,
-        recaptchaToken
-      })
-      setResult(res.data)
-      setSubmitted(true)
-    } catch (e) {
+    let recaptchaToken = null
+try {
+  recaptchaToken = await getRecaptchaToken('register')
+} catch (e) {
+  console.log('reCAPTCHA skipped:', e.message)
+} catch (e) {
       if (e.response?.data?.error === 'duplicate') {
         alert('This WhatsApp number is already registered! Visit /score to check your points.')
       } else if (e.response?.data?.error === 'invalid_phone') {
         alert('Please enter a valid Indian mobile number')
-      } else if (e.response?.data?.error === 'recaptcha_failed') {
-        alert('Security check failed. Please refresh the page and try again.')
       } else {
         alert('Something went wrong. Please try again.')
       }
