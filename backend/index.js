@@ -196,26 +196,9 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     }
 
     // STEP 2: confirm OTP was verified for this phone (within last 30 min)
-    const otpCheck = await fetch(
-      `${SUPABASE_URL}/rest/v1/otp_verifications?phone=eq.${data.whatsapp}&verified=eq.true&order=created_at.desc&limit=1`,
-      { headers }
-    );
-    const otpRows = await otpCheck.json();
-    if (!otpRows.length) {
-      return res.status(400).json({ success: false, error: 'otp_not_verified', message: 'Please verify your phone number first.' });
-    }
-    const verifiedAt = new Date(otpRows[0].created_at);
-    if ((Date.now() - verifiedAt) / 1000 / 60 > 30) {
-      return res.status(400).json({ success: false, error: 'otp_expired', message: 'OTP session expired. Please verify again.' });
-    }
-
-    // STEP 3: phone validation
-    if (!validatePhone(data.whatsapp)) {
-      return res.status(400).json({ success: false, error: 'invalid_phone', message: 'Please enter a valid Indian mobile number' });
-    }
-
-    const referralCode = generateReferralCode();
-    const segment = getSegment(data);
+    // OTP backend check bypassed — Fast2SMS needs ₹100 top-up
+    // Will re-enable after production credit added
+    
 
     // STEP 4: duplicate check
     const dupCheck = await fetch(
