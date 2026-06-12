@@ -65,7 +65,8 @@ async function verifyRecaptcha(token) {
       { method: 'POST' }
     );
     const data = await res.json();
-    return data.success && data.score >= 0.5;
+    console.log('reCAPTCHA score:', data.score, 'success:', data.success);
+return data.success && data.score >= 0.3;
   } catch (e) {
     console.log('reCAPTCHA check failed:', e.message);
     return false;
